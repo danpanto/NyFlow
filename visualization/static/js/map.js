@@ -30,8 +30,8 @@ function onEachFeatureZones(feature, layer) {
     layer.on('mouseout', (e) => {
         // Close popup after 5 secs
         setTimeout(() => {
-            this.closePopup(); 
-        }, 5000);
+            layer.closePopup(); 
+        }, 1500);
 
         // Reset layer state
         const currentLayer = e.target;
