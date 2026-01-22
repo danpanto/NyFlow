@@ -7,10 +7,8 @@ requires-python = ">=3.13"
 dependencies = [
     "dash>=3.4.0",
     "ipykernel>=7.1.0",
-    "keras>=3.13.1",
     "matplotlib>=3.10.8",
     "pandas>=3.0.0",
     "plotly>=6.5.2",
     "scikit-learn>=1.8.0",
-    "tensorflow>=2.20.0",
 ]
