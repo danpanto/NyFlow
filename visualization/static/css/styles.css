@@ -10,3 +10,7 @@ body {
     width: 100vw;
     height: 100vh;
 }
+
+.zones_overlay {
+    transition: fill-opacity 0.3s ease;
+};

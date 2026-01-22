@@ -1,3 +1,7 @@
+default_opacity = 0.2;
+hover_opacity = 0.5;
+
+zones_class = "zones_overlay";
 
 function onEachFeatureZones(feature, layer) {
     if (feature.properties) {
@@ -15,14 +19,25 @@ function onEachFeatureZones(feature, layer) {
 
         layer.bindPopup(popupContent);
     }
-    
-    layer.on('mouseclick', function() { 
-        this.openPopup(); 
+
+    layer.on('mouseover', (e) => {
+            const currentLayer = e.target;
+            currentLayer.setStyle({
+                fillOpacity: hover_opacity,
+            });
     });
-    layer.on('mouseout', function() {
+
+    layer.on('mouseout', (e) => {
+        // Close popup after 5 secs
         setTimeout(() => {
             this.closePopup(); 
         }, 5000);
+
+        // Reset layer state
+        const currentLayer = e.target;
+        currentLayer.setStyle({
+            fillOpacity: default_opacity,
+        });
     });
 }
 
@@ -40,15 +55,13 @@ function styleZones(feature) {
         case 'EWR':           color = "#64748b"; break; // Slate Gray
     }
     
-    border_width = 1;
-    border_color = "white";
-
     return {
-        weight: border_width,
-        color: border_color,
+        className: zones_class,
+        weight: 1,
+        color: "white",
         opacity: 1,
         fillColor: color,
-        fillOpacity: 0.2
+        fillOpacity: default_opacity,
     };
 }
 
