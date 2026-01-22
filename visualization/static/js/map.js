@@ -96,9 +96,18 @@ async function getZonesLayer() {
 document.addEventListener("DOMContentLoaded", async function() {
 
     // Initialize geographic map
-    const initial_coordinates = [40.68, -73.95];
+    const initial_coordinates = [40.7, -73.95];
     const initial_zoom = 13;
-    var map = L.map('map').setView(initial_coordinates, initial_zoom);
+    const bounds = [
+        [40.35, -74.95], // South West (Latitude, Longitude)
+        [41.05, -73]    // North East (Latitude, Longitude)
+    ];
+    var map = L.map('map', {
+        center: initial_coordinates,
+        zoom: initial_zoom,
+        maxBounds: bounds,
+        maxBoundsViscosity: 1,
+    });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
