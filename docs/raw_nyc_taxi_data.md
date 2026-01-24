@@ -161,6 +161,7 @@ Este documento describe el esquema y la lógica de los tres conjuntos de datos p
 * **HV0003:** Uber
 * HV0004: Via
 * **HV0005:** Lyft
+
 **Cálculo de Tiempos:**
 * **Tiempo de Espera del Pasajero:** `pickup_datetime` - `request_datetime`
 * **Tiempo de Espera del Conductor (en sitio):** `pickup_datetime` - `on_scene_datetime`
