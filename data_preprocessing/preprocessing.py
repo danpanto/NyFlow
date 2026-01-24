@@ -241,6 +241,6 @@ if __name__ == "__main__":
     # Si quieres unificar todo en uno:
     lf_all = pl.concat([lf_y, lf_g, lf_u], how="vertical_relaxed")
 
-    print(lf_all.select(["hvfhs_license_num"]).head().collect())
+    lf_all.sink_parquet(Path.cwd() / "data" / "trayectos.parquet")
 
     
