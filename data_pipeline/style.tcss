@@ -1,5 +1,5 @@
 #dialog {
-    width: 64; /* Slightly wider to ensure long labels + boxes fit */
+    width: 64;
     height: auto; 
     border: thick $primary;
     background: $panel;
@@ -13,6 +13,19 @@
     margin-bottom: 1;
 }
 
+.focuseable {
+    height: 1;
+    border: none;
+    background: $boost; 
+    color: $text;
+}
+
+.focuseable:focus {
+    background: $accent;
+    color: white;
+    text-style: bold;
+}
+
 .optbox-row {
     height: 1;
     align: left middle; 
@@ -20,43 +33,43 @@
 }
 
 .optbox-row Label {
-    width: 1fr;           /* Takes all space NOT used by the OptionBox */
+    width: 1fr;
     height: 1;
     text-align: left;
     content-align: left middle;
 }
 
-OptionBox {
-    /* width is now set in Python __init__ */
-    height: 1;
-    border: none;
-    background: $boost; 
-    color: $text;
+.optbox-row OptionBox {
     content-align: center middle;
     text-align: right;
 }
 
-OptionBox:focus {
-    background: $accent;
-    color: white;
-    text-style: bold;
-}
-
-.dl_exit-row {
-    margin-top: 1;
-    height: 3;
-    layout: horizontal;
-    align: right middle;
-}
-
-Button {
-    margin-left: 1;
-}
-
-#custom_options-cont {
+#vendors-collapsable {
     display: none;
     height: auto;
-    margin-top: 1;
-    border: tall $accent;
-    padding: 1;
+}
+
+.optbox_sub1-row {
+    height: 1;
+    align: left middle; 
+    margin-bottom: 1;
+    margin-left: 5;
+}
+
+.optbox_sub1-row Label {
+    width: 1fr;
+    height: 1;
+    text-align: left;
+    content-align: left middle;
+}
+
+.optbox_sub1-row CheckBox {
+    content-align: center middle;
+    text-align: right;
+    margin-right: 1;
+}
+
+.down-right {
+    align: right bottom;
+    height: 4;
 }

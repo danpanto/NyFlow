@@ -1,0 +1,110 @@
+from textual.widget import Widget, Text
+from textual.reactive import reactive
+from textual.message import Message
+from textual import events
+
+class OptionBox(Widget):
+
+    can_focus = True
+    value = reactive("", layout=True)
+
+
+    class Changed(Message):
+        def __init__(self, sender: "OptionBox", value: str) -> None:
+            super().__init__()
+            self.sender = sender
+            self.value = value
+
+
+    def __init__(self, options: list[str], id: str | None = None, classes: str | None = None):
+        super().__init__(id=id, classes=classes)
+        self.options = options
+        self._index = 0
+        self.value = options[0]
+
+
+    def render(self) -> str:
+        label = str(self.value)
+        text= f"[ {label} ]"
+        
+        if self.has_focus:
+            text = f"< {label} >"
+
+        return Text(text)
+        
+
+
+    def watch_value(self, new_value: str) -> None:
+        self.styles.width = len(new_value) + 4
+        self.post_message(self.Changed(self, new_value))
+        self.refresh()
+
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key == "right":
+            self._index = (self._index + 1) % len(self.options)
+        elif event.key == "left":
+            self._index = (self._index - 1) % len(self.options)
+        else:
+            return
+
+        self.value = self.options[self._index]
+
+
+    def on_focus(self) -> None:
+        self.refresh()
+
+
+    def on_blur(self) -> None:
+        self.refresh()
+
+
+
+class CheckBox(Widget):
+
+    can_focus = True
+
+    def __init__(self, state: bool = False, id: str | None = None, classes: str | None = None):
+        super().__init__(id=id, classes=classes)
+        self.state = state
+        self.styles.width = 3
+
+    def render(self) -> Text:
+        return Text("[X]" if self.state else "[ ]")
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key in ("space", "enter"):
+            self.state = not self.state
+            self.refresh()
+
+    def on_focus(self) -> None:
+        self.refresh()
+
+    def on_blur(self) -> None:
+        self.refresh()
+
+
+
+class Button(Widget):
+
+    can_focus = True
+
+    def __init__(self, text: str, action: callable, id: str | None = None, classes: str | None = None):
+        super().__init__(id=id, classes=classes)
+        self.text = text
+        self.styles.width = 2 + len(text)
+        self.action = action
+
+    def render(self) -> Text:
+        return f"<{self.text}>"
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key in ("space", "enter"):
+            self.action()
+            self.refresh()
+
+    def on_focus(self) -> None:
+        self.refresh()
+
+    def on_blur(self) -> None:
+        self.refresh()
