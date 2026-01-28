@@ -102,16 +102,40 @@ uber_params = {
     'url_prefix': "fhvhv", 
 
     'rename': {
+        "hvfhs_license_num": "vendor_name",
         "trip_miles": "trip_distance",
         "base_passenger_fare": "fare_amount",
         "tolls": "tolls_amount",
         "tips": "tip_amount",
     },
 
-    'required_schema': ["hvfhs_license_num","dispatching_base_num","originating_base_num","request_datetime","on_scene_datetime",
-        "pickup_datetime","dropoff_datetime","PULocationID","DOLocationID","trip_distance","fare_amount","tolls_amount","tip_amount",
-        "driver_pay","bcf","sales_tax","congestion_surcharge","airport_fee","cbd_congestion_fee","shared_request_flag",
-        "shared_match_flag","access_a_ride_flag","wav_request_flag","wav_match_flag", "total_amount"]
+    'required_schema': [
+        "vendor_name",
+        "dispatching_base_num",
+        "originating_base_num",
+        "request_datetime",
+        "on_scene_datetime",
+        "pickup_datetime",
+        "dropoff_datetime",
+        "PULocationID",
+        "DOLocationID",
+        "trip_distance",
+        "fare_amount",
+        "tolls_amount",
+        "tip_amount",
+        "driver_pay",
+        "sales_tax",
+        "congestion_surcharge",
+        "bcf",
+        "airport_fee",
+        "cbd_congestion_fee",
+        "shared_request_flag",
+        "shared_match_flag",
+        "access_a_ride_flag",
+        "wav_request_flag",
+        "wav_match_flag",
+        "total_amount"
+    ]
 }
 
 
@@ -166,20 +190,20 @@ def _normalize_trip_type_label(expr: pl.Expr) -> pl.Expr:
 FIELD_TRANFORMATIONS: dict[str, TransformationFunc] = {
     "payment_type": _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type"),
     "trip_type": _normalize_trip_type_label(pl.col("trip_type")).alias("trip_type"),
-    "hvfhs_license_num": pl.col("hvfhs_license_num").replace({'HV0002':'Juno', 'HV0003':'Uber', 'HV0004':'Via', 'HV0005':'Lyft'}).alias("hvfhs_license_num")
+    "vendor_name": pl.col("vendor_name").replace({'HV0002':'Juno', 'HV0003':'Uber', 'HV0004':'Via', 'HV0005':'Lyft'}).alias("vendor_name"),
 }
 
 # estos campos se crean al final de las transformaciones en caso de que la columna no exista
 FIELD_DERIVATIONS: dict[str, TransformationFunc] = {
     "total_amount": (
-                        pl.coalesce([pl.col("fare_amount"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("tolls_amount"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("bcf"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("sales_tax"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("congestion_surcharge"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("airport_fee"), pl.lit(0.0)]) +
-                        pl.coalesce([pl.col("cbd_congestion_fee"), pl.lit(0.0)])
-                    ).alias("total_amount")
+        pl.coalesce([pl.col("fare_amount"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("tolls_amount"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("bcf"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("sales_tax"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("congestion_surcharge"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("airport_fee"), pl.lit(0.0)]) +
+        pl.coalesce([pl.col("cbd_congestion_fee"), pl.lit(0.0)])
+    ).alias("total_amount")
 }
 
 
