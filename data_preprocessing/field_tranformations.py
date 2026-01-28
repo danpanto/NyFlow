@@ -56,7 +56,7 @@ TARGET_SCHEMA: dict[str, pl.DataType] = {
     "wav_match_flag": pl.Boolean,# uber
     "trip_type": pl.String, # green
     "ehail_fee": pl.Float64, # green
-    "hvfhs_license_num": pl.String, # uber USAR
+    "vendor_name": pl.String # uber USAR
 
     # trip_time: uber
     # black_car_fund #uber
