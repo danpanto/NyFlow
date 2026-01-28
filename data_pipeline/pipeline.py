@@ -20,6 +20,8 @@ class Pipeline(App):
                             id="dl_selector"
                         )
 
+                    yield Vertical(id="custom_options-cont")
+
                     with Horizontal(classes="optbox-row"):
                         yield Label("Transformations:")
                         yield OptionBox(
@@ -45,6 +47,15 @@ class Pipeline(App):
             self.screen.focus_previous()
         elif event.key == "down":
             self.screen.focus_next()
+
+    
+    def on_option_box_changed(self, message: OptionBox.Changed) -> None:
+        if message.sender.id == "dl_selector":
+            container = self.query_one("#custom_options-cont")
+            if message.value == "Custom":
+                container.display = True
+            else:
+                container.display = False
 
 
 

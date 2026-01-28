@@ -52,3 +52,11 @@ OptionBox:focus {
 Button {
     margin-left: 1;
 }
+
+#custom_options-cont {
+    display: none;
+    height: auto;
+    margin-top: 1;
+    border: tall $accent;
+    padding: 1;
+}

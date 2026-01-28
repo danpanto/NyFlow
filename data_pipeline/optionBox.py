@@ -12,8 +12,9 @@ class OptionBox(Widget):
 
     class Changed(Message):
         """Posted when the value changes."""
-        def __init__(self, value: str) -> None:
+        def __init__(self, sender: "OptionBox", value: str) -> None:
             super().__init__()
+            self.sender = sender
             self.value = value
 
 
@@ -37,7 +38,7 @@ class OptionBox(Widget):
 
     def watch_value(self, new_value: str) -> None:
         self.styles.width = len(new_value) + 4
-        self.post_message(self.Changed(new_value))
+        self.post_message(self.Changed(self, new_value))
         self.refresh()
 
 
