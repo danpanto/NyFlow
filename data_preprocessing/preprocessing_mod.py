@@ -6,62 +6,8 @@ import requests
 from pathlib import Path
 import polars as pl
 import pyarrow.parquet as pq
+from field_tranformations import _normalize_to_target_schema, yellow_params, green_params, uber_params
 
-TARGET_SCHEMA: dict[str, pl.DataType] = {
-    "VendorID": pl.String, 
-    "pickup_datetime": pl.Datetime("us"), 
-    "dropoff_datetime": pl.Datetime("us"), 
-    "passenger_count": pl.Int32, 
-    "trip_distance": pl.Float64, 
-    "RatecodeID": pl.Int32, 
-    "store_and_fwd_flag": pl.Boolean,
-    "PULocationID": pl.Int32, 
-    "DOLocationID": pl.Int32, 
-    "payment_type": pl.String, 
-    "fare_amount": pl.Float64, 
-    "extra": pl.Float64, 
-    "mta_tax": pl.Float64, 
-    "tip_amount": pl.Float64, 
-    "tolls_amount": pl.Float64, 
-    "improvement_surcharge": pl.Float64, 
-    "total_amount": pl.Float64, 
-    "congestion_surcharge": pl.Float64, 
-    "airport_fee": pl.Float64, 
-    "cbd_congestion_fee": pl.Float64, 
-    "dispatching_base_num": pl.String, 
-    "originating_base_num": pl.String, 
-    "request_datetime": pl.Datetime("us"), 
-    "on_scene_datetime": pl.Datetime("us"), 
-    "bcf": pl.Float64, 
-    "sales_tax": pl.Float64, 
-    "driver_pay": pl.Float64, 
-    "shared_request_flag": pl.Boolean,
-    "shared_match_flag": pl.Boolean,
-    "access_a_ride_flag": pl.Boolean,
-    "wav_request_flag": pl.Boolean,
-    "wav_match_flag": pl.Boolean,
-    "trip_type": pl.String, 
-    "ehail_fee": pl.Float64, 
-    "hvfhs_license_num": pl.String, 
-}
-
-def _yn10_to_bool(expr: pl.Expr) -> pl.Expr:
-    """
-    Convierte Y/N, 1/0, 1.0/0.0 a Booleano real.
-    Maneja Utf8View casteando primero a String.
-    """
-    s = expr.cast(pl.String, strict=False).str.strip_chars().str.to_uppercase()
-    
-    # 2. Mapa de valores aceptados
-    mapping = {
-        "Y": True, "YES": True, "T": True, "TRUE": True,
-        "1": True, "1.0": True,
-        "N": False, "NO": False, "F": False, "FALSE": False,
-        "0": False, "0.0": False,
-    }
-    
-    # 3. Reemplazo estricto (lo que no esté en el mapa será Null)
-    return s.replace_strict(mapping, default=None)
 
 def _download_file(url: str, local_path: Path) -> bool:
     try:
@@ -79,28 +25,6 @@ def _download_file(url: str, local_path: Path) -> bool:
         print(f"      Error red: {e}")
         return False
 
-def _normalize_to_target_schema(lf: pl.LazyFrame, rename: dict) -> pl.LazyFrame:
-    # 1. Renombrado seguro
-    current_cols = lf.collect_schema().names()
-    safe_rename = {k: v for k, v in rename.items() if k in current_cols}
-    if safe_rename:
-        lf = lf.rename(safe_rename)
-    
-    # 2. Selección y Casteo
-    cols_after = lf.collect_schema().names()
-    expressions = []
-    
-    for col_name, dtype in TARGET_SCHEMA.items():
-        if col_name in cols_after:
-            if dtype == pl.Boolean:
-                expressions.append(_yn10_to_bool(pl.col(col_name)).alias(col_name))
-            else:
-                expressions.append(pl.col(col_name).cast(dtype, strict=False))
-        else:
-            # Columna faltante -> Null
-            expressions.append(pl.lit(None).cast(dtype).alias(col_name))
-            
-    return lf.select(expressions)
 
 def _append_to_parquet(lf: pl.LazyFrame, writer: pq.ParquetWriter | None, out_file: Path):
     try:
@@ -129,7 +53,7 @@ def _append_to_parquet(lf: pl.LazyFrame, writer: pq.ParquetWriter | None, out_fi
     return writer
 
 def process_web_data(vehicle_type: str, url_prefix: str, start_year: int, end_year: int, 
-                     out_file: Path|str, rename: dict):
+                     out_file: Path|str, coalesce: list = [], rename:dict = {}, required_schema:list = []):
     
     out_file = Path(out_file)
     out_file.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +73,7 @@ def process_web_data(vehicle_type: str, url_prefix: str, start_year: int, end_ye
                 if _download_file(url, temp_file):
                     try:
                         lf = pl.scan_parquet(temp_file)
-                        lf = _normalize_to_target_schema(lf, rename)
+                        lf = _normalize_to_target_schema(lf, rename=rename, required_schema=required_schema, coalesce=coalesce)
                         writer = _append_to_parquet(lf, writer, out_file)
                         print(f"{year}-{month:02d}: OK              ")
                     except Exception as e:
@@ -177,58 +101,21 @@ if __name__ == "__main__":
 
     # 1. YELLOW
     process_web_data(
-        vehicle_type="yellow_taxi",
-        url_prefix="yellow",
         start_year=YEAR_START, end_year=YEAR_END,
         out_file=out_dir / "yellow_taxi_unified.parquet",
-        rename={
-            "tpep_pickup_datetime": "pickup_datetime",
-            "tpep_dropoff_datetime": "dropoff_datetime",
-            "Airport_fee": "airport_fee"
-        }
+        **yellow_params
     )
 
     # # 2. GREEN
     # process_web_data(
-    #     vehicle_type="green_taxi",
-    #     url_prefix="green",
     #     start_year=YEAR_START, end_year=YEAR_END,
     #     out_file=out_dir / "green_taxi_unified.parquet",
-    #     rename={
-    #         "lpep_pickup_datetime": "pickup_datetime",
-    #         "lpep_dropoff_datetime": "dropoff_datetime"
-    #     }
+    #     **green_params
     # )
 
     # # 3. UBER (FHV)
     # process_web_data(
-    #     vehicle_type="uber",
-    #     url_prefix="fhvhv", 
     #     start_year=YEAR_START, end_year=YEAR_END,
     #     out_file=out_dir / "uber_unified.parquet",
-    #     rename={
-    #         "hvfhs_license_num": "hvfhs_license_num",
-    #         "dispatching_base_num": "dispatching_base_num",
-    #         "pickup_datetime": "pickup_datetime",
-    #         "dropoff_datetime": "dropoff_datetime",
-    #         "dropOff_datetime": "dropoff_datetime",
-    #         "PULocationID": "PULocationID",
-    #         "PUlocationID": "PULocationID",
-    #         "DOLocationID": "DOLocationID",
-    #         "DOlocationID": "DOLocationID",
-    #         "trip_miles": "trip_distance",            
-    #         "base_passenger_fare": "fare_amount",     
-    #         "tips": "tip_amount",                     
-    #         "tolls": "tolls_amount",                  
-    #         "black_car_fund": "bcf",                  
-    #         "sales_tax": "sales_tax",                 
-    #         "congestion_surcharge": "congestion_surcharge", 
-    #         "airport_fee": "airport_fee",
-    #         "driver_pay": "driver_pay",
-    #         "shared_request_flag": "shared_request_flag",
-    #         "shared_match_flag": "shared_match_flag",
-    #         "access_a_ride_flag": "access_a_ride_flag",
-    #         "wav_request_flag": "wav_request_flag",
-    #         "wav_match_flag": "wav_match_flag"
-    #     }
+    #     **uber_params
     # )
