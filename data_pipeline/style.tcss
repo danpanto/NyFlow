@@ -1,0 +1,54 @@
+#dialog {
+    width: 64; /* Slightly wider to ensure long labels + boxes fit */
+    height: auto; 
+    border: thick $primary;
+    background: $panel;
+    padding: 1 2;
+}
+
+#title {
+    width: 100%;
+    content-align: center middle;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.optbox-row {
+    height: 1;
+    align: left middle; 
+    margin-bottom: 1;
+}
+
+.optbox-row Label {
+    width: 1fr;           /* Takes all space NOT used by the OptionBox */
+    height: 1;
+    text-align: left;
+    content-align: left middle;
+}
+
+OptionBox {
+    /* width is now set in Python __init__ */
+    height: 1;
+    border: none;
+    background: $boost; 
+    color: $text;
+    content-align: center middle;
+    text-align: right;
+}
+
+OptionBox:focus {
+    background: $accent;
+    color: white;
+    text-style: bold;
+}
+
+.dl_exit-row {
+    margin-top: 1;
+    height: 3;
+    layout: horizontal;
+    align: right middle;
+}
+
+Button {
+    margin-left: 1;
+}

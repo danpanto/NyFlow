@@ -16,6 +16,7 @@ dependencies = [
     "polars>=1.37.1",
     "pyarrow>=23.0.0",
     "scikit-learn>=1.8.0",
+    "textual>=7.4.0",
     "uvicorn>=0.40.0",
 ]
 
