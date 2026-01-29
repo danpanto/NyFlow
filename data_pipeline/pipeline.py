@@ -1,11 +1,52 @@
 from textual.app import App
 from textual.containers import Center, Middle, Vertical, Horizontal
 from textual.widgets import Label
-from textual import events
-from widgets import *
+from textual import events, work
+from data_pipeline.widgets import *
+
+
+def get_years_months_vendors() -> tuple[list[str], list[str], list[str]] | None:
+    from bs4 import BeautifulSoup
+    import requests as rq
+
+    response = rq.get("https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page")
+    if response.status_code // 100 != 2:
+        print(f"[Error] Status code: {response.status_code}")
+        return None
+    
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # Get available years
+    years = [tag.get("id")[3:] for tag in soup.find_all("div", {"class": "faq-answers"})]
+
+    
+    months = list()
+    vendors = list()
+    for td in soup.find_all("td"):
+        # Get available months
+        for strong in td.find_all("strong"):
+            m = strong.get_text(strip=True)
+            if m not in months:
+                months.append(m)
+
+        # Get available vendors
+        for link in td.find_all("a"):
+            v = link.get("title")[:-13]
+            if v not in vendors:
+                vendors.append(v)
+
+    return (years, months, vendors)
+    
+
 
 class Pipeline(App):
     CSS_PATH = "style.tcss"
+
+
+    def __init__(self):
+        super().__init__()
+        self.years, self.months, self.vendors = get_years_months_vendors()
+
 
     def compose(self):
         with Middle():
@@ -30,24 +71,13 @@ class Pipeline(App):
                         )
 
                     with Vertical(id="vendors-collapsable"):
-                        with Horizontal(classes="optbox_sub1-row"):
-                            yield Label("Yellow Taxi")
-                            yield OptionBox(["All", "Missing only"], id="yellow_selector", classes="focuseable")
-
-                        with Horizontal(classes="optbox_sub1-row"):
-                            yield Label("Green Taxi")
-                            yield OptionBox(["All", "Missing only"], id="green_selector", classes="focuseable")
-
-                        with Horizontal(classes="optbox_sub1-row"):
-                            yield Label("For-Hire Vehicle")
-                            yield OptionBox(["All", "Missing only"], id="for-hire_selector", classes="focuseable")
-
-                        with Horizontal(classes="optbox_sub1-row"):
-                            yield Label("High Volume For-Hire Vehicle")
-                            yield OptionBox(["All", "Missing only"], id="high-volume_selector", classes="focuseable")
+                        for vendor in self.vendors:
+                            with Horizontal(classes="optbox_sub1-row"):
+                                yield Label(vendor)
+                                yield OptionBox(["All", "Missing only"], id=f"{vendor[:4]}_selector", classes="focuseable") 
                     
                     with Vertical(classes="down-right"):
-                        yield Button("Download", action=self.exit, classes="focuseable")
+                        yield Button("Download", action=self.download, classes="focuseable")
                         yield Button("Exit", action=self.exit, classes="focuseable")
 
 
@@ -65,6 +95,40 @@ class Pipeline(App):
                 container.display = True
             else:
                 container.display = False
+
+
+    @work(exclusive=True, thread=True)
+    def download(self):
+        from data_extraction.download import get_lazy_frame, apply_transformations, save_lazy_frame
+        import polars as pl
+        from itertools import product
+        from textual import log
+        from time import sleep
+        from random import random
+
+        years = [2025, ]
+        months = [1, ]
+        vendors = ["yellow", "green", "fhvhv"]
+
+        for group in product(years, months, vendors):
+            lf = get_lazy_frame(*group)
+
+            if isinstance(lf, tuple):
+                if lf[0] == -1:
+                    self.notify(f"HTTP Error: {lf[1]} {list(group)}", title="Download error")
+                elif lf[0] == -2:
+                    self.notify(f"Invalid Content-type: {lf[1]} {list(group)}", title="Content-type error")
+                continue
+
+            self.notify(f"File downloaded correctly from web {list(group)}!", title="Success")
+
+            transf_lf = apply_transformations(lf, group[2])
+            self.notify(f"Data transformed correctly {list(group)}!", title="Success")
+
+            save_lazy_frame(transf_lf, *group)
+            self.notify(f"File saved correctly! {list(group)}", title="Success")
+
+            sleep(2 * (1 + random()))
 
 
 
