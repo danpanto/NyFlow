@@ -15,8 +15,6 @@ Falta:
 
 from __future__ import annotations
 
-from optimize_raw_df import optimize_dataframe, get_sort_column_by_schema
-
 from pathlib import Path
 import polars as pl
 import pyarrow.parquet as pq
@@ -207,7 +205,7 @@ FIELD_DERIVATIONS: dict[str, TransformationFunc] = {
 }
 
 
-def _normalize_to_target_schema(lf: pl.LazyFrame, coalesce: list = [], rename:dict = {}, required_schema:list = []) -> pl.LazyFrame:
+def normalize_to_target_schema(lf: pl.LazyFrame, coalesce: list = [], rename:dict = {}, required_schema:list = []) -> pl.LazyFrame:
     existing = set(lf.collect_schema().names())
 
     # asegurar que tiene las columnas de coalesce
