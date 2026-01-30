@@ -1,6 +1,16 @@
 import polars as pl
 
 
+month_map = {
+    1: "enero",      7: "julio",
+    2: "febrero",    8: "agosto",
+    3: "marzo",      9: "septiembre",
+    4: "abril",     10: "octubre",
+    5: "mayo",      11: "noviembre",
+    6: "junio",     12: "diciembre"
+}
+
+
 def get_lazy_frame(year: int, month: int, vendor: str) -> pl.LazyFrame | tuple:
     import requests as rq
     import io
@@ -59,10 +69,85 @@ def save_lazy_frame(lf: pl.LazyFrame, year: int, month: int, vendor: str) -> Non
     from pathlib import Path
 
 
-    month_path = Path.cwd() / "data" / str(year) / str(month)
+    month_path = Path.cwd() / "data" / str(year) / month_map[month]
     month_path.mkdir(parents=True, exist_ok=True)
 
     lf.sink_parquet(Path(month_path, f"{vendor}.parquet"))
+
+
+def merge_lazy_frames(method: str, remove_files: bool = False):
+    from pathlib import Path
+    import requests as rq
+
+
+    if method == "None":
+        return
+
+    data_path = Path.cwd() / "data"
+
+    files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
+
+    if not files:
+        return
+
+    if method == "Single file":
+        lfs = [pl.scan_parquet(f) for f in files]
+        pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, "all_merged.parquet"))
+
+    elif method == "By vendor":
+        
+
+        vendor_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            vid = f.stem
+            vendor_groups.setdefault(vid, []).append(f)
+
+        # Process each vendor group individually
+        for vid, grouped_files in vendor_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{vid}_merged.parquet"))
+            
+    elif method == "By month":
+        month_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            month = f.parent.name
+            month_groups.setdefault(month, []).append(f)
+
+        # Process each month group individually
+        for month, grouped_files in month_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{month}_merged.parquet"))
+
+    elif method == "By year":
+        year_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            year = f.parent.parent.name
+            year_groups.setdefault(year, []).append(f)
+
+        # Process each year group individually
+        for year, grouped_files in year_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{year}_merged.parquet"))
+
+    else: return
+
+    # Handle original files' deletion
+    if not remove_files:
+        return
+
+    for f in files:
+        f.unlink()
+
+    for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
+        if p.is_dir() and not any(p.iterdir()):
+            p.rmdir()
+    
 
 
 if __name__ == '__main__':

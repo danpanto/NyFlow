@@ -52,7 +52,7 @@ class Pipeline(App):
         with Middle():
             with Center():
                 with Vertical(id="dialog"):
-                    yield Label("Download Pipeline Settings", id="title")
+                    yield Label("Data Pipeline Settings", id="title")
 
                     with Horizontal(classes="optbox-row"):
                         yield Label("Transformations:")
@@ -81,9 +81,26 @@ class Pipeline(App):
                                     id=f"{short_name}_selector",
                                     classes="focuseable"
                                 ) 
+
+                    with Horizontal(classes="optbox-row"):
+                        yield Label("Merge options:")
+                        yield OptionBox(
+                            ["None", "By vendor", "By month", "By year", "Single file"],
+                            id="merge_selector",
+                            classes="focuseable"
+                        )
+
+                    with Vertical(id="merge-collapsable"):
+                        with Horizontal(classes="optbox_sub1-row"):
+                            yield CheckBox(
+                                state=False,
+                                id="del-files-merge-checkbox",
+                                classes="focuseable"
+                            )
+                            yield Label("Delete original files after merge")
                     
                     with Vertical(classes="down-right"):
-                        yield Button("Download", action=self.download, classes="focuseable")
+                        yield Button("Download", action=self.pipeline, classes="focuseable")
                         yield Button("Exit", action=self.exit, classes="focuseable")
 
 
@@ -96,16 +113,15 @@ class Pipeline(App):
     
     def on_option_box_changed(self, message: OptionBox.Changed) -> None:
         if message.sender.id == "dl_selector":
-            container = self.query_one("#vendors-collapsable")
-            if message.value == "Custom":
-                container.display = True
-            else:
-                container.display = False
+            self.query_one("#vendors-collapsable").display = (message.value == "Custom")
+
+        elif message.sender.id == "merge_selector":
+            self.query_one("#merge-collapsable").display = (message.value != "None")
 
 
     @work(exclusive=True, thread=True)
-    def download(self):
-        from data_extraction.download import get_lazy_frame, apply_transformations, save_lazy_frame
+    def pipeline(self):
+        from data_extraction.download import get_lazy_frame, apply_transformations, save_lazy_frame, merge_lazy_frames
         import polars as pl
         from itertools import product
         from textual import log
@@ -113,10 +129,8 @@ class Pipeline(App):
         from random import random
         from pathlib import Path
 
-        self.call_from_thread(setattr, self.screen, "disabled", True)
-
-        years = [2025, ]
-        months = [1, 2, 3]
+        years = [2025, 2024, 2023]
+        months = [1, 4, 6]
         
 
         # Get vendors to download
@@ -139,10 +153,15 @@ class Pipeline(App):
                 else:
                     vendors.append((name, widget.value == "Missing only"))
 
+        del_files_merge = self.query_one("#del-files-merge-checkbox").state
+        merge_type = self.query_one("#merge_selector").value
+
 
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
+        self.call_from_thread(setattr, self.screen, "disabled", True)
+
         for group in product(years, months, vendors):
             # Check if file already exists
             file_path = Path(Path.cwd(), "data", str(group[0]), str(group[1]), f"{group[2][0]}.parquet")
@@ -171,6 +190,11 @@ class Pipeline(App):
             self.notify(f"File saved correctly! {list(info)}", title="Success")
 
             sleep(2 * (1 + random()))
+
+        # Merge files if requested
+        if del_files_merge:
+            self.notify("Merging data...", title="Success")
+        merge_lazy_frames(method=merge_type, remove_files=del_files_merge)
 
         self.call_from_thread(setattr, self.screen, "disabled", False)
 
