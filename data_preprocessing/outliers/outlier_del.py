@@ -154,7 +154,7 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     intermediate_path.unlink() 
 
 
-def remove_outliers(outliers_cols):
+def remove_outliers(lf, outliers_cols):
     con = duckdb.connect()
     con.execute("SET memory_limit='12GB'")
 

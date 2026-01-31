@@ -73,14 +73,17 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyF
         )
 
     if which in ("Outliers", "All"):      
-        remove_outliers([
-            "trip_distance",
-            "fare_amount",
-            "extra",
-            "tip_amount",
-            "tolls_amount",
-            "total_amount"
-        ])
+        remove_outliers(
+            lf=lf,
+            outliers_cols=[
+                "trip_distance",
+                "fare_amount",
+                "extra",
+                "tip_amount",
+                "tolls_amount",
+                "total_amount"
+            ]
+        )
         
     return lf
 
