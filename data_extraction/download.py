@@ -74,6 +74,7 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyF
 
     if which in ("Outliers", "All"):
         
+                
         outliers_cols = [
             "trip_distance",
             "fare_amount",
@@ -88,13 +89,9 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyF
 
         PATH_DATA = Path.cwd() / "data"
 
-        f = "temp_input.parquet"
-
-        f_in = PATH_DATA / f
-        f_inter = PATH_DATA / f"{f.split('.')[0]}_semi_clean.parquet"
-        f_out = PATH_DATA / f"{f.split('.')[0]}_final_clean.parquet"
-        
-        print(f"PROCESANDO: {f}")
+        f_in = PATH_DATA / pl.DataFrame(lf.collect()).write_parquet("temp_input.parquet") or Path("temp_input.parquet")
+        f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
+        f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
         
         # 1. Calcular límites combinados (Percentil + IQR)
         limits = get_combined_limits(con, f_in, outliers_cols)
