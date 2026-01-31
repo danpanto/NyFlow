@@ -132,7 +132,10 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
 
     if method == "Single file":
         lfs = [pl.scan_parquet(f) for f in files]
-        pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, "all_merged.parquet"))
+        file_path = Path(data_path, "all_merged.parquet")
+        if file_path.exists():
+            file_path.unlink()
+        pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
 
     elif method == "By vendor":
         vendor_groups = {}
@@ -145,7 +148,10 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each vendor group individually
         for vid, grouped_files in vendor_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{vid}_merged.parquet"))
+            file_path = Path(data_path, f"{vid}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
             
     elif method == "By month":
         month_groups = {}
@@ -158,7 +164,10 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each month group individually
         for month, grouped_files in month_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{month}_merged.parquet"))
+            file_path = Path(data_path, f"{month}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
 
     elif method == "By year":
         year_groups = {}
@@ -171,7 +180,10 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each year group individually
         for year, grouped_files in year_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{year}_merged.parquet"))
+            file_path = Path(data_path, f"{year}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
 
     else: return
 
