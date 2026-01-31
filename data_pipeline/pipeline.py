@@ -204,12 +204,12 @@ class Pipeline(App):
                                 )
 
                         with Horizontal(classes="optbox_sub1-row"):
-                            yield Label("Transformations:")
-                            yield OptionBox(
-                                ["All", "Outliers", "Add/Del columns", "None"],
+                            yield CheckBox(
+                                state=False,
                                 id="tf_selector",
                                 classes="focuseable"
                             )
+                            yield Label("Apply column transformations")
 
                     with Horizontal(classes="optbox-row"):
                         yield Label("Merge type:")
@@ -227,6 +227,14 @@ class Pipeline(App):
                                 classes="focuseable"
                             )
                             yield Label("Delete original files after merge")
+
+                    with Horizontal(classes="optbox-row"):
+                        yield CheckBox(
+                            state=False,
+                            id="outlier_selector",
+                            classes="focuseable"
+                        )
+                        yield Label("Remove outliers")
                     
                     with Vertical(classes="down-right"):
                         yield Button("Download", action=self.pipeline, classes="focuseable")
@@ -268,7 +276,13 @@ class Pipeline(App):
 
     @work(exclusive=True, thread=True)
     def pipeline(self):
-        from data_extraction.download import get_lazy_frame, apply_transformations, save_lazy_frame, merge_lazy_frames
+        from data_extraction.download import (
+            get_lazy_frame,
+            apply_transformations,
+            save_lazy_frame,
+            merge_lazy_frames,
+            rm_outliers
+        )
         import polars as pl
         from itertools import product
         from textual import log
@@ -277,16 +291,18 @@ class Pipeline(App):
         from pathlib import Path
 
         years = self.selected_years
-        if not years:
-            return
-
         months = self.selected_months
-        if not months:
-            return
+
+        vendor_mode = self.query_one("#dl_selector").value
+        del_files_merge = self.query_one("#del-files-merge-checkbox").state
+        merge_type = self.query_one("#merge_selector").value
+        transf = self.query_one("#tf_selector").state
+        dl_mode = self.query_one("#dl_mode_selector").value
+        outliers = self.query_one("#outlier_selector").state
+        dl_filepaths: list[Path] = []
         
         # Get vendors to download
         vendors = []
-        vendor_mode = self.query_one("#dl_selector").value
         vendor_map = {
             "yellow_checkbox": "yellow",
             "green_checkbox": "green",
@@ -302,20 +318,12 @@ class Pipeline(App):
                 if widget.state: 
                     vendors.append(name)
 
-        if not vendors:
-            return
-
-        del_files_merge = self.query_one("#del-files-merge-checkbox").state
-        merge_type = self.query_one("#merge_selector").value
-        transf = self.query_one("#tf_selector").value
-        dl_mode = self.query_one("#dl_mode_selector").value
-
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
         self.call_from_thread(setattr, self.screen, "disabled", True)
 
-        if dl_mode != "None":
+        if dl_mode != "None" or len(vendors) == 0:
             for group in product(years, months, vendors):
 
                 # Check for duplicate is Missing Only is selected
@@ -336,12 +344,12 @@ class Pipeline(App):
                 self.notify(f"File downloaded correctly from web {list(group)}!", title="Success")
 
                 # Apply transformations if requested
-                if transf != "None":
-                    lf = apply_transformations(lf, group[2], transf)
+                if transf:
+                    lf = apply_transformations(lf, group[2])
                     self.notify(f"Data transformed correctly {list(group)}!", title="Success")
 
                 # Save data to local file
-                save_lazy_frame(lf, *group)
+                dl_filepaths.append(save_lazy_frame(lf, *group))
                 self.notify(f"File saved correctly! {list(group)}", title="Success")
 
                 sleep(2 * (1 + random()))
@@ -349,8 +357,19 @@ class Pipeline(App):
         # Merge local files if requested
         if merge_type != "None":
             self.notify("Merging data...", title="Success")
-            merge_lazy_frames(method=merge_type, remove_files=del_files_merge)
+            aux = merge_lazy_frames(method=merge_type, remove_files=del_files_merge)
+            if aux is not None:
+                dl_filepaths = aux
             self.notify("Data merged successfully...", title="Success")
+        else:
+            dl_filepaths = [_ for _ in Path(Path.cwd(), "data").glob("*.parquet")]
+
+        if outliers:
+            # self.notify(f"{dl_filepaths}", title="Success")
+            self.notify("Removing outliers. Please wait...", title="Success")
+            for f in dl_filepaths:
+                rm_outliers(f)
+            self.notify("Outliers removed successfully...", title="Success")
 
         self.call_from_thread(setattr, self.screen, "disabled", False)
 

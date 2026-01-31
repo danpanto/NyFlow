@@ -77,6 +77,12 @@ SelectionList:focus {
     content-align: left middle;
 }
 
+.optbox-row CheckBox {
+    content-align: center middle;
+    text-align: right;
+    margin-right: 1;
+}
+
 .optbox-row OptionBox {
     content-align: center middle;
     text-align: right;

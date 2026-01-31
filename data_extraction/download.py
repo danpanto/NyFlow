@@ -48,9 +48,8 @@ def get_lazy_frame(year: int, month: str, vendor: str) -> pl.LazyFrame | tuple:
     return pl.read_parquet(io.BytesIO(parquet_response.content)).lazy()
 
 
-def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyFrame:
+def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
     from data_preprocessing.field_tranformations import normalize_to_target_schema, yellow_params, green_params, uber_params
-    from data_preprocessing.outliers.outlier_del import remove_outliers
     
     params = {}
 
@@ -64,41 +63,25 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyF
         case "fhvhv":
             params = uber_params
 
-    if which in ("Add/Del columns", "All"):
-        lf = normalize_to_target_schema(
-            lf,
-            coalesce=params.get("coalesce", []),
-            rename=params.get("rename", {}),
-            required_schema=params.get("required_schema", [])
-        )
-
-    if which in ("Outliers", "All"):      
-        remove_outliers(
-            lf=lf,
-            outliers_cols=[
-                "trip_distance",
-                "fare_amount",
-                "extra",
-                "tip_amount",
-                "tolls_amount",
-                "total_amount"
-            ]
-        )
-        
-    return lf
+    return normalize_to_target_schema(
+        lf,
+        coalesce=params.get("coalesce", []),
+        rename=params.get("rename", {}),
+        required_schema=params.get("required_schema", [])
+    )
 
 
-def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> None:
-    from pathlib import Path
-
-
+def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Path:
     month_path = Path.cwd() / "data" / str(year) / month
     month_path.mkdir(parents=True, exist_ok=True)
+    filepath = Path(month_path, f"{vendor}.parquet")
 
-    lf.sink_parquet(Path(month_path, f"{vendor}.parquet"))
+    lf.sink_parquet(filepath)
+
+    return filepath
 
 
-def merge_lazy_frames(method: str, remove_files: bool = False):
+def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | None:
     from pathlib import Path
     import requests as rq
 
@@ -108,7 +91,9 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
     files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
 
     if not files:
-        return
+        return None
+
+    ret_paths: list[Path] = []
 
     if method == "Single file":
         lfs = [pl.scan_parquet(f) for f in files]
@@ -116,6 +101,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         if file_path.exists():
             file_path.unlink()
         pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+        ret_paths.append(file_path)
 
     elif method == "By vendor":
         vendor_groups = {}
@@ -132,6 +118,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
             
     elif method == "By month":
         month_groups = {}
@@ -148,6 +135,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
 
     elif method == "By year":
         year_groups = {}
@@ -164,20 +152,37 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
 
-    else: return
+    else: return None
 
     # Handle original files' deletion
-    if not remove_files:
-        return
+    if remove_files:
+        for f in files:
+            f.unlink()
 
-    for f in files:
-        f.unlink()
+        for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
+            if p.is_dir() and not any(p.iterdir()):
+                p.rmdir()
 
-    for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
-        if p.is_dir() and not any(p.iterdir()):
-            p.rmdir()
+    return ret_paths
     
+
+def rm_outliers(filepath: Path):
+    from data_preprocessing.outliers.outlier_del import remove_outliers
+
+    remove_outliers(
+        lf=lf,
+        filepath=filepath,
+        outliers_cols=[
+            "trip_distance",
+            "fare_amount",
+            "extra",
+            "tip_amount",
+            "tolls_amount",
+            "total_amount"
+        ]
+    )
 
 
 if __name__ == '__main__':

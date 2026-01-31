@@ -154,13 +154,14 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     intermediate_path.unlink() 
 
 
-def remove_outliers(lf, outliers_cols):
+def remove_outliers(lf, outliers_cols, filepath):
+    from textual import log
     con = duckdb.connect()
     con.execute("SET memory_limit='12GB'")
 
     PATH_DATA = Path.cwd() / "data"
 
-    f_in = PATH_DATA / pl.DataFrame(lf.collect()).write_parquet("temp_input.parquet") or Path("temp_input.parquet")
+    f_in = filepath
     f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
     f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
     
