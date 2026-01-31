@@ -178,6 +178,27 @@ def print_final_stats(con, original_path, final_path):
     print(f"Retención:  {perc:.2f}% de los datos")
     print("="*40)
 
+
+def remove_outliers(outliers_cols):
+    con = duckdb.connect()
+    con.execute("SET memory_limit='12GB'")
+
+    PATH_DATA = Path.cwd() / "data"
+
+    f_in = PATH_DATA / pl.DataFrame(lf.collect()).write_parquet("temp_input.parquet") or Path("temp_input.parquet")
+    f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
+    f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
+    
+    # 1. Calcular límites combinados (Percentil + IQR)
+    limits = get_combined_limits(con, f_in, outliers_cols)
+    
+    # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
+    step_1_sql_filtering(con, f_in, f_inter, limits)
+    
+    # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
+    step_2_isolation_forest(con, f_inter, f_out, outliers_cols)
+
+
 if __name__ == "__main__":
     con = duckdb.connect()
     con.execute("SET memory_limit='10GB'")
