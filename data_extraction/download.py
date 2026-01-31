@@ -1,5 +1,6 @@
+import duckdb
 import polars as pl
-
+from pathlib import Path
 
 month_map = {
     "January":      "01",
@@ -49,7 +50,7 @@ def get_lazy_frame(year: int, month: str, vendor: str) -> pl.LazyFrame | tuple:
 
 def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyFrame:
     from data_preprocessing.field_tranformations import normalize_to_target_schema, yellow_params, green_params, uber_params
-
+    from data_preprocessing.outliers.outlier_del import get_combined_limits, step_1_sql_filtering, step_2_isolation_forest
     
     params = {}
 
@@ -72,9 +73,38 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyF
         )
 
     if which in ("Outliers", "All"):
-        # Call outlier removal processes
-        pass
+        
+        outliers_cols = [
+            "trip_distance",
+            "fare_amount",
+            "extra",
+            "tip_amount",
+            "tolls_amount",
+            "total_amount"
+        ]
 
+        con = duckdb.connect()
+        con.execute("SET memory_limit='12GB'")
+
+        PATH_DATA = Path.cwd() / "data"
+
+        f = "temp_input.parquet"
+
+        f_in = PATH_DATA / f
+        f_inter = PATH_DATA / f"{f.split('.')[0]}_semi_clean.parquet"
+        f_out = PATH_DATA / f"{f.split('.')[0]}_final_clean.parquet"
+        
+        print(f"PROCESANDO: {f}")
+        
+        # 1. Calcular límites combinados (Percentil + IQR)
+        limits = get_combined_limits(con, f_in, outliers_cols)
+        
+        # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
+        step_1_sql_filtering(con, f_in, f_inter, limits)
+        
+        # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
+        step_2_isolation_forest(con, f_inter, f_out, outliers_cols)
+        
     return lf
 
 
