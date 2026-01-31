@@ -34,7 +34,6 @@ hv_taxi_cols = [
 
 def get_combined_limits(con, file_path, columns):
     """Calcula los límites de IQR y Percentiles simultáneamente"""
-    print(f"\t[CALCULANDO LÍMITES] Percentiles ({PERC_LOW}-{PERC_HIGH}) + IQR ({IQR_FACTOR})...")
     
     selects = []
     for col in columns:
@@ -70,9 +69,7 @@ def get_combined_limits(con, file_path, columns):
     return limits
 
 def step_1_sql_filtering(con, input_path, intermediate_path, limits):
-    """Aplica IQR y Percentiles usando DuckDB"""
-    print("\n\t[PASO 1] Aplicando filtros SQL (IQR + Percentiles)...")
-    
+    """Aplica IQR y Percentiles usando DuckDB"""    
     conditions = []
     for col, (low, high) in limits.items():
         conditions.append(f"({col} >= {low} AND {col} <= {high})")
@@ -86,14 +83,11 @@ def step_1_sql_filtering(con, input_path, intermediate_path, limits):
     """)
     
     rows = con.execute(f"SELECT COUNT(*) FROM '{intermediate_path}'").fetchone()[0]
-    print(f"\tPaso 1 completado. Filas restantes: {rows:,.0f}")
 
 def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     """Aplica ML sobre el archivo intermedio"""
-    print("\n\t[PASO 2] Aplicando Isolation Forest (Machine Learning)...")
     
     # 1. Entrenar
-    print(f"\t   Entrenando modelo con muestra de {ISO_SAMPLE_SIZE}...")
     df_sample = con.execute(f"""
         SELECT {', '.join(columns)} FROM '{intermediate_path}' 
         USING SAMPLE {ISO_SAMPLE_SIZE}
@@ -107,9 +101,7 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     )
     clf.fit(df_sample)
     
-    # 2. Predecir y guardar por chunks
-    print("\t   Filtrando dataset completo...")
-    
+    # 2. Predecir y guardar por chunks    
     # Borrar archivo final si existe para evitar errores de append
     if final_path.exists():
         final_path.unlink()
@@ -150,9 +142,7 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
         offset += chunk_size
         part_idx += 1
         prog = min(100, (offset / total_rows_step1) * 100)
-        print(f"\t   Progreso: {prog:.1f}% - Tiempo: {(time.time() - t_i) / 60:.1f}m", end="\r")
         
-    print("\n\t   Consolidando archivo final...")
     # Unimos todas las partes con DuckDB en un solo archivo final
     con.execute(f"""
         COPY (SELECT * FROM '{temp_dir}/part_*.parquet') 
@@ -162,21 +152,6 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     # Limpieza
     shutil.rmtree(temp_dir)
     intermediate_path.unlink() 
-
-def print_final_stats(con, original_path, final_path):
-    orig = con.execute(f"SELECT COUNT(*) FROM '{original_path}'").fetchone()[0]
-    final = con.execute(f"SELECT COUNT(*) FROM '{final_path}'").fetchone()[0]
-    diff = orig - final
-    perc = (final / orig) * 100
-    
-    print("\n" + "="*40)
-    print(f"RESUMEN FINAL")
-    print("="*40)
-    print(f"Original:   {orig:,.0f}")
-    print(f"Limpio:     {final:,.0f}")
-    print(f"Eliminados: {diff:,.0f} outliers")
-    print(f"Retención:  {perc:.2f}% de los datos")
-    print("="*40)
 
 
 def remove_outliers(outliers_cols):
@@ -197,29 +172,3 @@ def remove_outliers(outliers_cols):
     
     # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
     step_2_isolation_forest(con, f_inter, f_out, outliers_cols)
-
-
-if __name__ == "__main__":
-    con = duckdb.connect()
-    con.execute("SET memory_limit='10GB'")
-    
-    files = ["yellow_taxi_unified.parquet"]
-    
-    for f in files:
-        f_in = PATH_DATA / f
-        f_inter = PATH_DATA / f"{f.split('.')[0]}_semi_clean.parquet"
-        f_out = PATH_DATA / f"{f.split('.')[0]}_final_clean.parquet"
-        
-        print(f"PROCESANDO: {f}")
-        
-        # 1. Calcular límites combinados (Percentil + IQR)
-        limits = get_combined_limits(con, f_in, yellow_taxi_cols)
-        
-        # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
-        step_1_sql_filtering(con, f_in, f_inter, limits)
-        
-        # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
-        step_2_isolation_forest(con, f_inter, f_out, yellow_taxi_cols)
-        
-        # 4. Resultados
-        print_final_stats(con, f_in, f_out)
