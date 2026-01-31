@@ -2,16 +2,22 @@ import polars as pl
 
 
 month_map = {
-    1: "enero",      7: "julio",
-    2: "febrero",    8: "agosto",
-    3: "marzo",      9: "septiembre",
-    4: "abril",     10: "octubre",
-    5: "mayo",      11: "noviembre",
-    6: "junio",     12: "diciembre"
+    "January":      "01",
+    "February":     "02",
+    "March":        "03",
+    "April":        "04",
+    "May":          "05",
+    "June":         "06",
+    "July":         "07",
+    "August":       "08",
+    "September":    "09",
+    "October":      "10",
+    "November":     "11",
+    "December":     "12",
 }
 
 
-def get_lazy_frame(year: int, month: int, vendor: str) -> pl.LazyFrame | tuple:
+def get_lazy_frame(year: int, month: str, vendor: str) -> pl.LazyFrame | tuple:
     import requests as rq
     import io
 
@@ -27,7 +33,7 @@ def get_lazy_frame(year: int, month: int, vendor: str) -> pl.LazyFrame | tuple:
     session.headers.update(headers)
 
     session.get(url)
-    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{year}-{str(month):0>2}.parquet"
+    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{year}-{month_map[month]}.parquet"
     parquet_response = session.get(file_url, stream=True)
 
     if parquet_response.status_code // 100 != 2:
@@ -41,9 +47,10 @@ def get_lazy_frame(year: int, month: int, vendor: str) -> pl.LazyFrame | tuple:
     return pl.read_parquet(io.BytesIO(parquet_response.content)).lazy()
 
 
-def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
+def apply_transformations(lf: pl.LazyFrame, vendor: str, which: str) -> pl.LazyFrame:
     from data_preprocessing.field_tranformations import normalize_to_target_schema, yellow_params, green_params, uber_params
 
+    
     params = {}
 
     match vendor:
@@ -56,20 +63,26 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
         case "fhvhv":
             params = uber_params
 
+    if which in ("Add/Del columns", "All"):
+        lf = normalize_to_target_schema(
+            lf,
+            coalesce=params.get("coalesce", []),
+            rename=params.get("rename", {}),
+            required_schema=params.get("required_schema", [])
+        )
 
-    return normalize_to_target_schema(
-        lf,
-        coalesce=params.get("coalesce", []),
-        rename=params.get("rename", {}),
-        required_schema=params.get("required_schema", [])
-    )
+    if which in ("Outliers", "All"):
+        # Call outlier removal processes
+        pass
+
+    return lf
 
 
-def save_lazy_frame(lf: pl.LazyFrame, year: int, month: int, vendor: str) -> None:
+def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> None:
     from pathlib import Path
 
 
-    month_path = Path.cwd() / "data" / str(year) / month_map[month]
+    month_path = Path.cwd() / "data" / str(year) / month
     month_path.mkdir(parents=True, exist_ok=True)
 
     lf.sink_parquet(Path(month_path, f"{vendor}.parquet"))
@@ -80,9 +93,6 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
     import requests as rq
 
 
-    if method == "None":
-        return
-
     data_path = Path.cwd() / "data"
 
     files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
@@ -92,11 +102,9 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
 
     if method == "Single file":
         lfs = [pl.scan_parquet(f) for f in files]
-        pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, "all_merged.parquet"))
+        pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, "all_merged.parquet"))
 
     elif method == "By vendor":
-        
-
         vendor_groups = {}
 
         # Get all files separated by vendor
@@ -107,7 +115,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each vendor group individually
         for vid, grouped_files in vendor_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{vid}_merged.parquet"))
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{vid}_merged.parquet"))
             
     elif method == "By month":
         month_groups = {}
@@ -120,7 +128,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each month group individually
         for month, grouped_files in month_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{month}_merged.parquet"))
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{month}_merged.parquet"))
 
     elif method == "By year":
         year_groups = {}
@@ -133,7 +141,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
         # Process each year group individually
         for year, grouped_files in year_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            pl.concat(lfs, rechunk=False).sink_parquet(Path(data_path, f"{year}_merged.parquet"))
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(Path(data_path, f"{year}_merged.parquet"))
 
     else: return
 
@@ -151,6 +159,6 @@ def merge_lazy_frames(method: str, remove_files: bool = False):
 
 
 if __name__ == '__main__':
-    lf = get_lazy_frame(year=2025, month=1, vendor="yellow")
+    lf = get_lazy_frame(year=2025, month="January", vendor="yellow")
     transf_lf = apply_transformations(lf, "yellow", "Add/Del columns")
-    save_lazy_frame(transf_lf, year=2025, month=1, vendor="yellow")
+    save_lazy_frame(transf_lf, year=2025, month="January", vendor="yellow")
