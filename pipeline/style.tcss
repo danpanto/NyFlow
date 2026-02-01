@@ -1,4 +1,4 @@
-#dialog, #modal-dialog {
+#dialog, #dialog2, #modal-dialog {
     width: 64;
     height: auto; 
     border: thick $primary;
@@ -6,7 +6,7 @@
     padding: 1 2;
 }
 
-#dialog:disabled {
+#dialog:disabled, #dialog2:disabled {
     opacity: 0.5;
 }
 
@@ -14,7 +14,7 @@ LogView {
     padding: 0 1;
 }
 
-#title, #modal-title {
+#title, #title2, #modal-title {
     width: 100%;
     content-align: center middle;
     text-style: bold;
@@ -95,7 +95,7 @@ SelectionList:focus {
     text-align: right;
 }
 
-#vendors-collapsable, #date-collapsable {
+#vendors-collapsable, #date-collapsable, #merge-collapsable {
     display: none;
     height: auto;
 }

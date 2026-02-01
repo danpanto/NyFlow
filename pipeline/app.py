@@ -51,11 +51,11 @@ def get_years_months_vendors() -> tuple[list[str], list[str], list[str]] | None:
 class Pipeline(App):
     CSS_PATH = "style.tcss"
 
-    TAB_LIST = ["Download", "Logs"]
+    TAB_LIST = ["Download", "Preprocess", "Logs"]
 
     BINDINGS = [
-        *[(str(i+1), f"switch_tab('content-tab-{i+1}', 'nav-tab-{i+1}')", val) for i, val in enumerate(TAB_LIST)],
-
+        *[(str(i+1), f"switch_tab('content-tab-{i+1}', 'nav-tab-{i+1}')", val)
+        for i, val in enumerate(TAB_LIST)],
     ]
 
 
@@ -134,21 +134,21 @@ class Pipeline(App):
         elif message.sender.id == "date_selector":
             self.query_one("#date-collapsable").display = (message.value == "Custom")
 
+        elif message.sender.id == "merge_selector":
+            self.query_one("#merge-collapsable").display = (message.value != "None")
+
 
     @work(exclusive=True, thread=True)
     def run_dl_pipeline(self):
         import polars as pl
         from itertools import product
-        from textual import log
         from time import sleep
         from random import random
         from pathlib import Path
         from data_extraction.download import (
             get_lazy_frame,
             apply_transformations,
-            save_lazy_frame,
-            merge_lazy_frames,
-            rm_outliers
+            save_lazy_frame
         )
 
         
@@ -178,7 +178,7 @@ class Pipeline(App):
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
-        self.call_from_thread(setattr, self.query_one("#dialog"), "disabled", True)
+        self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
 
         if dl_mode != "None" or len(vendors) == 0:
             for group in product(years, months, vendors):
@@ -196,13 +196,13 @@ class Pipeline(App):
                 lf, url = get_lazy_frame(*group)
 
                 if isinstance(url, int):
-                    if lf[0] == -1:
+                    if lf == -1:
                         self.notify_and_log(
                             message=f"HTTP Error: {url} {list(group)}",
                             title="Download error",
                             status="ERROR"
                         )
-                    elif lf[0] == -2:
+                    elif lf == -2:
                         self.notify_and_log(
                             message=f"Invalid Content-type: {url} {list(group)}",
                             title="Download error",
@@ -242,7 +242,40 @@ class Pipeline(App):
 
                 sleep(2 * (1 + random()))
 
-        self.call_from_thread(setattr, self.query_one("#dialog"), "disabled", False)
+        self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
+
+
+    @work(exclusive=True, thread=True)
+    def run_prep_pipeline(self):
+        from data_extraction.download import merge_lazy_frames, rm_outliers
+
+
+        merge_type = self.query_one("#merge_selector").value
+        del_files_merge = self.query_one("#del-files-merge-checkbox").is_selected
+        merged_files: list[Path] = []
+
+        # ------------------------------------- #
+        # ----- Beginning of the pipeline ----- #
+        # ------------------------------------- #
+        self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
+
+        if merge_type != "None":
+            self.notify_and_log(
+                message="Please wait...",
+                title="Merging data"
+            )
+
+            aux = merge_lazy_frames(method=merge_type, remove_files=del_files_merge)
+            if aux is not None:
+                merged_files = aux
+
+            self.notify_and_log(
+                message=f"Data merged successfully",
+                title="Transformation successful",
+                status="SUCCESS"
+            )
+
+        self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
 
 
     def compose(self) -> ComposeResult:
@@ -317,10 +350,40 @@ class Pipeline(App):
                                 yield Button("Download", action=self.run_dl_pipeline, classes="focuseable")
                                 yield Button("Exit", action=self.exit, classes="focuseable")
 
+            # -------------------------- #
+            # ----- Preprocess Tab ----- #
+            # -------------------------- #                  
+            with Vertical(id="content-tab-2"):
+                with Middle():
+                    with Center():
+                        with Vertical(id="dialog2"):
+                            yield Label("Preprocess Settings", id="title2")
+                            
+                            with Horizontal(classes="optbox-row"):
+                                yield Label("Merge type:")
+                                yield OptionBox(
+                                    ["None", "By vendor", "By month", "By year", "Single file"],
+                                    id="merge_selector",
+                                    classes="focuseable"
+                                )
+
+                            with Vertical(id="merge-collapsable"):
+                                with Horizontal(classes="optbox_sub1-row"):
+                                    yield CheckBox(
+                                        is_selected=False,
+                                        id="del-files-merge-checkbox",
+                                        classes="focuseable"
+                                    )
+                                    yield Label("Delete original files after merge")
+                            
+                            with Vertical(classes="down-right"):
+                                yield Button("Start", action=self.run_prep_pipeline, classes="focuseable")
+                                yield Button("Exit", action=self.exit, classes="focuseable")
+
             # -------------------- #
             # ----- Logs Tab ----- #
             # -------------------- #                  
-            with Vertical(id="content-tab-2"):
+            with Vertical(id="content-tab-3"):
                 yield Label("Pipeline Logs", classes="title")
                 yield LogView(id="log-view")
 
