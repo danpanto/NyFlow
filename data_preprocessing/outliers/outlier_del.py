@@ -154,9 +154,9 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     intermediate_path.unlink() 
 
 
-def remove_outliers(lf, outliers_cols, filepath):
+def remove_outliers(filepath, outliers_cols):
     from textual import log
-    con = duckdb.connect()
+    con = duckdb.connect("trips.duckdb")
     con.execute("SET memory_limit='12GB'")
 
     PATH_DATA = Path.cwd() / "data"

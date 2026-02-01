@@ -1,4 +1,4 @@
-from data_pipeline.widgets import Button
+from pipeline.widgets import Button
 from textual import events
 from textual.app import ComposeResult
 from textual.screen import ModalScreen

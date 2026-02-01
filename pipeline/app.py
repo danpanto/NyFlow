@@ -248,16 +248,20 @@ class Pipeline(App):
     @work(exclusive=True, thread=True)
     def run_prep_pipeline(self):
         from data_extraction.download import merge_lazy_frames, rm_outliers
+        from pathlib import Path
 
 
         merge_type = self.query_one("#merge_selector").value
         del_files_merge = self.query_one("#del-files-merge-checkbox").is_selected
+        outliers = self.query_one("#outlier_selector").is_selected
         merged_files: list[Path] = []
 
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
         self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
+
+        merge_path = Path(Path.cwd(), "data", "merged")
 
         if merge_type != "None":
             self.notify_and_log(
@@ -271,7 +275,24 @@ class Pipeline(App):
 
             self.notify_and_log(
                 message=f"Data merged successfully",
-                title="Transformation successful",
+                title="Merge successful",
+                status="SUCCESS"
+            )
+        elif merge_path.exists():
+            merged_files = [_ for _ in merge_path.glob("*.parquet")]
+
+        if outliers:
+            self.notify_and_log(
+                message="Please wait...",
+                title="Removing outliers"
+            )
+
+            for f in merged_files:
+                rm_outliers(f)
+            
+            self.notify_and_log(
+                message=f"Outliers removed successfully",
+                title="Removal successful",
                 status="SUCCESS"
             )
 
@@ -375,6 +396,14 @@ class Pipeline(App):
                                         classes="focuseable"
                                     )
                                     yield Label("Delete original files after merge")
+
+                            with Horizontal(classes="optbox-row"):
+                                yield CheckBox(
+                                    is_selected=False,
+                                    id="outlier_selector",
+                                    classes="focuseable"
+                                )
+                                yield Label("Remove outliers")
                             
                             with Vertical(classes="down-right"):
                                 yield Button("Start", action=self.run_prep_pipeline, classes="focuseable")

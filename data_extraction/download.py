@@ -87,6 +87,8 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
 
 
     data_path = Path.cwd() / "data"
+    merge_path = data_path / "merged"
+    merge_path.mkdir(exist_ok=True)
 
     files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
 
@@ -97,7 +99,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
 
     if method == "Single file":
         lfs = [pl.scan_parquet(f) for f in files]
-        file_path = Path(data_path, "all_merged.parquet")
+        file_path = Path(merge_path, "all_merged.parquet")
         if file_path.exists():
             file_path.unlink()
         pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
@@ -114,7 +116,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
         # Process each vendor group individually
         for vid, grouped_files in vendor_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(data_path, f"{vid}_merged.parquet")
+            file_path = Path(merge_path, f"{vid}_merged.parquet")
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
@@ -131,7 +133,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
         # Process each month group individually
         for month, grouped_files in month_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(data_path, f"{month}_merged.parquet")
+            file_path = Path(merge_path, f"{month}_merged.parquet")
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
@@ -148,7 +150,7 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
         # Process each year group individually
         for year, grouped_files in year_groups.items():
             lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(data_path, f"{year}_merged.parquet")
+            file_path = Path(merge_path, f"{year}_merged.parquet")
             if file_path.exists():
                 file_path.unlink()
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
@@ -172,7 +174,6 @@ def rm_outliers(filepath: Path):
     from data_preprocessing.outliers.outlier_del import remove_outliers
 
     remove_outliers(
-        lf=lf,
         filepath=filepath,
         outliers_cols=[
             "trip_distance",
