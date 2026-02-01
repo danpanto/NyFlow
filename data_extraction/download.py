@@ -18,7 +18,7 @@ month_map = {
 }
 
 
-def get_lazy_frame(year: int, month: str, vendor: str) -> pl.LazyFrame | tuple:
+def get_lazy_frame(year: int, month: str, vendor: str) -> tuple:
     import requests as rq
     import io
 
@@ -45,7 +45,7 @@ def get_lazy_frame(year: int, month: str, vendor: str) -> pl.LazyFrame | tuple:
     if content_type != "binary/octet-stream":
         return (-2, content_type)
 
-    return pl.read_parquet(io.BytesIO(parquet_response.content)).lazy()
+    return (pl.read_parquet(io.BytesIO(parquet_response.content)).lazy(), file_url)
 
 
 def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
