@@ -287,21 +287,28 @@ class Pipeline(App):
                 title="Removing outliers"
             )
 
+            outlier_ok = True
+
             for f in merged_files:
                 try:
                     rm_outliers(f)
-                except:
+                except Exception as outlier_exc:
                     self.notify_and_log(
                         message=f"Error while removing outliers from {f}",
                         title="Removal error",
                         status="ERROR"
                     )
+                    self.notify_and_log(
+                        message=str(outlier_exc)
+                    )
+                    outlier_ok = False
             
-            self.notify_and_log(
-                message="Outliers removed successfully",
-                title="Removal successful",
-                status="SUCCESS"
-            )
+            if outlier_ok:
+                self.notify_and_log(
+                    message="Outliers removed successfully",
+                    title="Removal successful",
+                    status="SUCCESS"
+                )
 
         self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
 
