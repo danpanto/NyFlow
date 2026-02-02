@@ -274,7 +274,7 @@ class Pipeline(App):
                 merged_files = aux
 
             self.notify_and_log(
-                message=f"Data merged successfully",
+                message="Data merged successfully",
                 title="Merge successful",
                 status="SUCCESS"
             )
@@ -288,10 +288,17 @@ class Pipeline(App):
             )
 
             for f in merged_files:
-                rm_outliers(f)
+                try:
+                    rm_outliers(f)
+                except:
+                    self.notify_and_log(
+                        message=f"Error while removing outliers from {f}",
+                        title="Removal error",
+                        status="ERROR"
+                    )
             
             self.notify_and_log(
-                message=f"Outliers removed successfully",
+                message="Outliers removed successfully",
                 title="Removal successful",
                 status="SUCCESS"
             )
