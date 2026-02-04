@@ -65,9 +65,7 @@ def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
 
     return normalize_to_target_schema(
         lf,
-        coalesce=params.get("coalesce", []),
-        rename=params.get("rename", {}),
-        required_schema=params.get("required_schema", [])
+        **params
     )
 
 

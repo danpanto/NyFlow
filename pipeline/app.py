@@ -195,7 +195,7 @@ class Pipeline(App):
                 )
                 lf, url = get_lazy_frame(*group)
 
-                if isinstance(url, int):
+                if isinstance(lf, int):
                     if lf == -1:
                         self.notify_and_log(
                             message=f"HTTP Error: {url} {list(group)}",
