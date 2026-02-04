@@ -176,7 +176,6 @@ def rm_outliers(filepath: Path):
         outliers_cols=[
             "trip_distance",
             "fare_amount",
-            "extra",
             "tip_amount",
             "tolls_amount",
             "total_amount"
