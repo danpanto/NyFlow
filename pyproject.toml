@@ -16,6 +16,7 @@ dependencies = [
     "plotly>=6.5.2",
     "polars>=1.37.1",
     "pyarrow>=23.0.0",
+    "pyspark>=4.1.1",
     "scikit-learn>=1.8.0",
     "textual>=7.4.0",
     "uvicorn>=0.40.0",
