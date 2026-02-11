@@ -155,7 +155,7 @@ SelectionTree {
     color: $text;
     border: none;
     width: 100%;
-    height: 15; /* Matches your #lists-container height */
+    height: 20; /* Matches your #lists-container height */
     margin-bottom: 1;
     padding: 0 1;
 }

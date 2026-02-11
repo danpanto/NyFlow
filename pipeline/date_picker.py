@@ -11,12 +11,14 @@ class DatePickerModal(ModalScreen):
 
     CSS_PATH = "style.tcss"
     
-    def __init__(self, years, months, selected_years=None, selected_months=None):
+    def __init__(self, dates: dict, selected_dates: set = None):
         super().__init__()
+        self.dates = dates
+        self.selected_dates = selected_dates
 
 
     def confirm(self):
-        self.dismiss(None)
+        self.dismiss(self.query_one("#date-tree").get_selected_values())
 
     
     def on_key(self, event: events.Key) -> None:
@@ -29,20 +31,20 @@ class DatePickerModal(ModalScreen):
                 cancel_btn.focus()
             elif self.focused == cancel_btn:
                 confirm_btn.focus()
+            event.stop()
 
         elif event.key == "left":
             if self.focused == cancel_btn:
                 confirm_btn.focus()
             elif self.focused == confirm_btn:
                 cancel_btn.focus()
+            event.stop()
 
         elif event.key == "tab":
             if self.focused == date_tree:
                 confirm_btn.focus()
             elif self.focused in (confirm_btn, cancel_btn):
                 date_tree.focus()
-        
-        if event.key in ("left", "right", "tab"):
             event.stop()
 
 
@@ -53,17 +55,7 @@ class DatePickerModal(ModalScreen):
                     yield Label("Select Data Range", id="modal-title")
                     
                     # This horizontal container holds the two lists side-by-side
-                    data = {
-                        "2025": {
-                            "Jan": "2025-01",
-                            "Feb": "2025-02"
-                        },
-                        "2024": {
-                            "Nov": "2024-11",
-                            "Dec": "2024-12"
-                        },
-                    }
-                    yield SelectionTree(data, id="date-tree")
+                    yield SelectionTree(self.dates, self.selected_dates, id="date-tree", start_expanded=False)
 
                     with Horizontal(id="modal-footer"):
                         yield Button("Cancel", action=lambda: self.dismiss(None), id="cancel-btn", classes="focuseable")

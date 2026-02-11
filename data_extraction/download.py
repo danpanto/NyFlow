@@ -2,23 +2,8 @@ import duckdb
 import polars as pl
 from pathlib import Path
 
-month_map = {
-    "January":      "01",
-    "February":     "02",
-    "March":        "03",
-    "April":        "04",
-    "May":          "05",
-    "June":         "06",
-    "July":         "07",
-    "August":       "08",
-    "September":    "09",
-    "October":      "10",
-    "November":     "11",
-    "December":     "12",
-}
 
-
-def get_lazy_frame(year: int, month: str, vendor: str) -> tuple:
+def get_lazy_frame(date: str, vendor: str) -> tuple:
     import requests as rq
     import io
 
@@ -34,7 +19,7 @@ def get_lazy_frame(year: int, month: str, vendor: str) -> tuple:
     session.headers.update(headers)
 
     session.get(url)
-    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{year}-{month_map[month]}.parquet"
+    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{date}.parquet"
     parquet_response = session.get(file_url, stream=True)
 
     if parquet_response.status_code // 100 != 2:
