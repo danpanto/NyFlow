@@ -1,77 +1,85 @@
-from rich.text import Text
 from textual.widgets import Tree
-from pathlib import Path
+from textual.widgets.tree import TreeNode
+from textual import events
 
 class SelectionTree(Tree):
-    """A Tree that builds itself using the Path API."""
+    """
+    A recursive tree that builds itself from a nested dictionary.
+    Supports multi-selection of leaf nodes.
+    """
 
-    def __init__(self, paths: list[Path], selected: list[Path] | None = None, **kwargs):
-        # We use a generic "Data" root label
-        super().__init__("Data", **kwargs)
+    can_focus = True
+
+    def __init__(self, data: dict, label: str = "Root", id: str | None = None):
+        super().__init__(label, id=id)
+        self.data_structure = data
+        self.selected_paths = set()
+
+
+    def _build_tree(self, data: dict, parent_node: TreeNode):
+        """Recursively adds nodes based on dictionary depth."""
+        for key, value in data.items():
+            if isinstance(value, dict):
+                # It's a branch
+                node = parent_node.add(str(key), expand=True)
+                self._build_tree(value, node)
+            else:
+                # It's a leaf (selectable item)
+                # We store the 'value' in node.data for the caller to retrieve
+                label = self._format_label(str(key), False)
+                parent_node.add_leaf(label, data={"val": value, "key": key})
+
+
+    def _format_label(self, text: str, is_selected: bool) -> str:
+        icon = "[X]" if is_selected else "[ ]"
+        return f"{icon} {text}"
+
+
+    def on_key(self, event: events.Key) -> None:
+        """Handle your custom toggling."""
+        if event.key == "space":
+            if self.cursor_node:
+                self.handle_selection(self.cursor_node)
+                event.stop()
+
+        elif event.key == "up":
+            self.action_cursor_up()
+            event.stop()
+
+        elif event.key == "down":
+            self.action_cursor_down()
+            event.stop()
+
+
+    def on_mount(self) -> None:
         self.show_root = False
-        self.all_paths = paths
-        self.selected_paths = set(selected or [])
-        self.build()
+        # Start the recursive build from the root
+        self._build_tree(self.data_structure, self.root)
 
-    def _get_checkbox(self, path: Path) -> Text:
-        """Standard [X] or [ ] render logic."""
-        is_selected = path in self.selected_paths
-        return Text.assemble(
-            ("[", "white"),
-            ("X" if is_selected else " ", "deep_sky_blue1" if is_selected else "white", "bold"),
-            ("]", "white")
-        )
-
-    def build(self) -> None:
-        self.clear()
-        # Ensure paths are sorted for consistent tree building
-        for path in sorted(self.all_paths):
-            current_node = self.root
-            # 'parts' gives us a tuple: ('2024', 'Jan', 'file.parquet')
-            parts = path.parts
-            
-            accumulated_path = Path()
-            for i, part in enumerate(parts):
-                accumulated_path = accumulated_path / part
-                is_last = (i == len(parts) - 1)
-
-                # Find if this specific segment already exists in the current branch
-                target_node = None
-                for child in current_node.children:
-                    if child.data and child.data.get("full_path") == accumulated_path:
-                        target_node = child
-                        break
-                
-                if target_node is None:
-                    if is_last:
-                        # It's a file leaf
-                        label = Text.assemble(self._get_checkbox(path), f" {part}")
-                        current_node.add_leaf(label, data={"full_path": path, "is_file": True})
-                    else:
-                        # It's a directory branch
-                        current_node = current_node.add(
-                            Text(part, style="bold"), 
-                            data={"full_path": accumulated_path, "is_file": False}, 
-                            expand=True
-                        )
-                else:
-                    # Move deeper into the existing folder
-                    current_node = target_node
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        node = event.node
-        if node.data and node.data.get("is_file"):
-            path = node.data["full_path"]
-            
-            if path in self.selected_paths:
-                self.selected_paths.remove(path)
-            else:
-                self.selected_paths.add(path)
-            
-            # Update the label using the last part of the Path (the filename)
-            node.label = Text.assemble(self._get_checkbox(path), f" {path.name}")
-            node.refresh()
+        """Handle the Enter key (default selection event)."""
+        self.handle_selection(event.node)
 
-    @property
-    def selected(self) -> list[Path]:
-        return list(self.selected_paths)
+
+    def handle_selection(self, node) -> None:
+        """Unified logic for toggling branches or checking leaves."""
+        if node.allow_expand:
+            node.toggle()
+        else:
+            item_id = id(node)
+            if item_id in self.selected_paths:
+                self.selected_paths.remove(item_id)
+                node.set_label(self._format_label(node.data["key"], False))
+            else:
+                self.selected_paths.add(item_id)
+                node.set_label(self._format_label(node.data["key"], True))
+
+
+    def get_selected_values(self) -> list:
+        """Returns the 'value' portion of all selected leaf nodes."""
+        selected = []
+        for node in self.find_nodes(lambda n: not n.allow_expand):
+            if id(node) in self.selected_paths:
+                selected.append(node.data["val"])
+        return selected

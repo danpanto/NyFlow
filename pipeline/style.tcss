@@ -148,3 +148,36 @@ SelectionList:focus {
     align: right bottom;
     height: 4;
 }
+
+/* Match the dimensions of your old lists-container */
+SelectionTree {
+    background: $surface;
+    color: $text;
+    border: none;
+    width: 100%;
+    height: 15; /* Matches your #lists-container height */
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+/* The guide lines connecting branches */
+SelectionTree > .tree--guides {
+    color: $boost;
+}
+
+/* The hover/focus state of the lines in the tree */
+SelectionTree > .tree--cursor {
+    background: $accent;
+    color: white;
+    text-style: bold;
+}
+
+/* When the tree itself is focused */
+SelectionTree:focus {
+    color: $accent;
+}
+
+/* Optional: style the tree root if you decide to show it */
+SelectionTree > .tree--label {
+    padding: 0 1;
+}
