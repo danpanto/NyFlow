@@ -98,7 +98,7 @@ class Pipeline(App):
 
     def open_date_picker(self):
         def handle_return(data):
-            if data:
+            if data is not None:
                 self.selected_dates = data
 
         self.push_screen(

@@ -16,7 +16,7 @@ class SelectionTree(Tree):
 
         super().__init__(label, id=id)
         self.node_data = data
-        self.selected_data = set() if selected_data is None else selected_data
+        self.selected_data = selected_data if selected_data is not None else set()
         self.start_expanded = start_expanded
 
 
@@ -52,12 +52,37 @@ class SelectionTree(Tree):
             self.action_cursor_down()
             event.stop()
 
+        elif event.key in ("tab", "shift+tab"):
+            new_focus = self.cursor_node if self.cursor_node.allow_expand else self.cursor_node.parent
+
+            if event.key == "shift+tab":
+                if any(child.is_expanded for child in self.root.children):
+                    self.root.collapse_all()
+                    self.root.expand()
+                else:
+                    self.root.expand_all()
+
+                if self.root.children:
+                    self.move_cursor(self.root.children[0])
+                
+                event.stop()
+
+            elif new_focus != self.root:
+                if new_focus != self.cursor_node:
+                    self.move_cursor(new_focus)
+                
+                new_focus.toggle()
+                event.stop()
+            
+
 
     def on_mount(self):
         self.show_root = False
         self._build_tree(self.node_data, self.root)
 
         self.root.expand_all() if self.start_expanded else self.root.collapse_all()
+        self.move_cursor(self.root.children[0])
+        self.cursor_node.toggle()
 
 
     def on_tree_node_selected(self, event: Tree.NodeSelected):

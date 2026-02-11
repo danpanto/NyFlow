@@ -14,37 +14,50 @@ class DatePickerModal(ModalScreen):
     def __init__(self, dates: dict, selected_dates: set = None):
         super().__init__()
         self.dates = dates
-        self.selected_dates = selected_dates
+        self.selected_dates = set(selected_dates) if selected_dates else set()
+        self.last_button = None
 
 
     def confirm(self):
         self.dismiss(self.query_one("#date-tree").get_selected_values())
 
+
+    def cancel(self):
+        self.dismiss(None)
+
     
     def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            event.stop()
+            self.cancel()
+
         date_tree = self.query_one("#date-tree")
         confirm_btn = self.query_one("#confirm-btn")
         cancel_btn = self.query_one("#cancel-btn")
+        modal_sidebar = self.query_one("#modal-sidebar")
 
-        if event.key == "right":
-            if self.focused == confirm_btn:
-                cancel_btn.focus()
-            elif self.focused == cancel_btn:
-                confirm_btn.focus()
-            event.stop()
-
-        elif event.key == "left":
-            if self.focused == cancel_btn:
-                confirm_btn.focus()
-            elif self.focused == confirm_btn:
-                cancel_btn.focus()
-            event.stop()
-
-        elif event.key == "tab":
-            if self.focused == date_tree:
-                confirm_btn.focus()
-            elif self.focused in (confirm_btn, cancel_btn):
+        if event.key == "left":
+            if self.focused != date_tree:
+                self.last_button = self.focused
                 date_tree.focus()
+            event.stop()
+
+        elif event.key == "right":
+            if self.focused == date_tree:
+                if self.last_button:
+                    self.last_button.focus()
+                else:
+                    confirm_btn.focus()
+            event.stop()
+
+        elif event.key == "up":
+            if self.focused != modal_sidebar.children[0]:
+                self.focus_previous()
+            event.stop()
+
+        elif event.key == "down":
+            if self.focused != modal_sidebar.children[-1]:
+                self.focus_next()
             event.stop()
 
 
@@ -53,10 +66,10 @@ class DatePickerModal(ModalScreen):
             with Center():
                 with Vertical(id="modal-dialog"):
                     yield Label("Select Data Range", id="modal-title")
-                    
-                    # This horizontal container holds the two lists side-by-side
-                    yield SelectionTree(self.dates, self.selected_dates, id="date-tree", start_expanded=False)
 
-                    with Horizontal(id="modal-footer"):
-                        yield Button("Cancel", action=lambda: self.dismiss(None), id="cancel-btn", classes="focuseable")
-                        yield Button("Confirm", action=self.confirm, id="confirm-btn", classes="focuseable")
+                    with Horizontal(id="main-container"):
+                        yield SelectionTree(self.dates, self.selected_dates, id="date-tree", start_expanded=False)
+
+                        with Vertical(id="modal-sidebar"):
+                            yield Button("Cancel", action=self.cancel, id="cancel-btn", classes="focuseable")
+                            yield Button("Confirm", action=self.confirm, id="confirm-btn", classes="focuseable")

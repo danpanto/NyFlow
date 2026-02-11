@@ -50,13 +50,24 @@ SelectionList:focus {
     color: $accent;
 }
 
-#modal-footer {
-    height: 3;
-    align: center middle;
+#main-container {
+    height: 25;
 }
 
-#modal-footer Button {
-    margin: 0 2;
+#date-tree {
+    width: 1fr;
+    height: 100%;
+}
+
+#modal-sidebar {
+    width: auto;
+    height: 100%;
+    align: center top;
+    padding: 0 1;
+}
+
+#modal-sidebar Button {
+    width: 100%;
 }
 
 .focuseable {
