@@ -31,3 +31,6 @@ packages = ["visualization"]
 
 [project.scripts]
 visual = "visualization.app.main:main"
+
+[tool.setuptools]
+packages = ["minio"]
