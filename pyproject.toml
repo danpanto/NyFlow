@@ -10,6 +10,7 @@ dependencies = [
     "duckdb>=1.4.3",
     "fastapi>=0.128.0",
     "ipykernel>=7.1.0",
+    "loadenv>=0.1.1",
     "matplotlib>=3.10.8",
     "minio>=7.2.20",
     "nbformat>=5.10.4",
