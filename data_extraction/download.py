@@ -12,7 +12,7 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         "Referer": url,
-        "Accept": "application/octet-stream" 
+        "Accept": "application/octet-stream; application/x-www-form-urlencoded" 
     }
 
     session = rq.Session()
@@ -20,17 +20,18 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
 
     session.get(url)
     file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{date}.parquet"
-    parquet_response = session.get(file_url, stream=True)
 
-    if parquet_response.status_code // 100 != 2:
-        return (-1, parquet_response.status_code)
+    with session.get(file_url, stream=True) as parquet_response:
+        if parquet_response.status_code // 100 != 2:
+            return (-1, parquet_response.status_code)
 
-    content_type = parquet_response.headers.get('Content-Type', '')
+        magic_bytes = parquet_response.raw.read(4)
+        if magic_bytes != b"PAR1":
+            return (-2, f"Invalid Parquet Magic Bytes: {magic_bytes}")
 
-    if content_type != "binary/octet-stream":
-        return (-2, content_type)
+        file_data = magic_bytes + parquet_response.raw.read()
 
-    return (pl.read_parquet(io.BytesIO(parquet_response.content)).lazy(), file_url)
+    return (pl.read_parquet(io.BytesIO(file_data)).lazy(), file_url)
 
 
 def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
