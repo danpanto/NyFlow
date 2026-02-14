@@ -1,4 +1,5 @@
 from pipeline.widgets import Button
+from pipeline.selection_tree import SelectionTree
 from textual import events
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
@@ -10,92 +11,54 @@ class DatePickerModal(ModalScreen):
 
     CSS_PATH = "style.tcss"
     
-    def __init__(self, years, months, selected_years=None, selected_months=None):
+    def __init__(self, dates: dict, selected_dates: set = None):
         super().__init__()
-        self.years = years
-        self.months = months
+        self.dates = dates
+        self.selected_dates = set(selected_dates) if selected_dates else set()
         self.last_button = None
-        self.last_group = None
-        self.selected_years = selected_years or []
-        self.selected_months = selected_months or []
-
-
-    def on_mount(self) -> None:
-        """Initialize selections after the widgets are mounted."""
-        year_list = self.query_one("#year-list", SelectionList)
-        for y in self.selected_years:
-            if y in self.years:
-                year_list.select(y)
-
-        month_list = self.query_one("#month-list", SelectionList)
-        for m in self.selected_months:
-            if m in self.months:
-                month_list.select(m)
 
 
     def confirm(self):
-        results = {
-            "years": self.query_one("#year-list").selected,
-            "months": self.query_one("#month-list").selected
-        }
-        self.dismiss(results)
+        self.dismiss(self.query_one("#date-tree").get_selected_values())
+
+
+    def cancel(self):
+        self.dismiss(None)
 
     
     def on_key(self, event: events.Key) -> None:
-        year_list = self.query_one("#year-list")
-        month_list = self.query_one("#month-list")
+        if event.key == "escape":
+            event.stop()
+            self.cancel()
+
+        date_tree = self.query_one("#date-tree")
         confirm_btn = self.query_one("#confirm-btn")
         cancel_btn = self.query_one("#cancel-btn")
+        modal_sidebar = self.query_one("#modal-sidebar")
 
-        # --- HORIZONTAL NAVIGATION ---
-        if event.key == "right":
-            if self.focused == year_list:
-                month_list.focus()
-                event.stop()
-            elif self.focused == month_list:
-                year_list.focus()
-                event.stop()
-            elif self.focused == confirm_btn:
-                cancel_btn.focus()
-                event.stop()
-            elif self.focused == cancel_btn:
-                confirm_btn.focus()
-                event.stop()
-
-        elif event.key == "left":
-            if self.focused == month_list:
-                year_list.focus()
-                event.stop()
-            elif self.focused == year_list:
-                month_list.focus()
-                event.stop()
-            elif self.focused == cancel_btn:
-                confirm_btn.focus()
-                event.stop()
-            elif self.focused == confirm_btn:
-                cancel_btn.focus()
-                event.stop()
-
-        # --- GROUP JUMPING ---
-        elif event.key == "tab":
-            if self.focused in (year_list, month_list):
-                if self.last_button is None:
-                    cancel_btn.focus()
-                else:
-                    self.last_button.focus()
-                self.last_group = self.focused
-                event.stop()
-            elif self.focused in (confirm_btn, cancel_btn):
-                if self.last_group is None:
-                    year_list.focus()
-                else:
-                    self.last_group.focus()
+        if event.key == "left":
+            if self.focused != date_tree:
                 self.last_button = self.focused
-                event.stop()
-        
-        elif event.key in ("up", "down"):
-            if self.focused in (confirm_btn, cancel_btn):
-                event.stop()
+                date_tree.focus()
+            event.stop()
+
+        elif event.key == "right":
+            if self.focused == date_tree:
+                if self.last_button:
+                    self.last_button.focus()
+                else:
+                    confirm_btn.focus()
+            event.stop()
+
+        elif event.key == "up":
+            if self.focused != modal_sidebar.children[0]:
+                self.focus_previous()
+            event.stop()
+
+        elif event.key == "down":
+            if self.focused != modal_sidebar.children[-1]:
+                self.focus_next()
+            event.stop()
 
 
     def compose(self) -> ComposeResult:
@@ -103,17 +66,10 @@ class DatePickerModal(ModalScreen):
             with Center():
                 with Vertical(id="modal-dialog"):
                     yield Label("Select Data Range", id="modal-title")
-                    
-                    # This horizontal container holds the two lists side-by-side
-                    with Horizontal(id="lists-container"):
-                        with Vertical(classes="list-column"):
-                            yield Label("Years")
-                            yield SelectionList(*[(y, y) for y in self.years], id="year-list")
-                        
-                        with Vertical(classes="list-column"):
-                            yield Label("Months")
-                            yield SelectionList(*[(m, m) for m in self.months], id="month-list")
 
-                    with Horizontal(id="modal-footer"):
-                        yield Button("Cancel", action=lambda: self.dismiss(None), id="cancel-btn", classes="focuseable")
-                        yield Button("Confirm", action=self.confirm, id="confirm-btn", classes="focuseable")
+                    with Horizontal(id="main-container"):
+                        yield SelectionTree(self.dates, self.selected_dates, id="date-tree", start_expanded=False)
+
+                        with Vertical(id="modal-sidebar"):
+                            yield Button("Cancel", action=self.cancel, id="cancel-btn", classes="focuseable")
+                            yield Button("Confirm", action=self.confirm, id="confirm-btn", classes="focuseable")

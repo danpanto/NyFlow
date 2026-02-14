@@ -76,6 +76,42 @@ green_params = {
 }
     
 # ---------- 3) Uber / HVFHV ----------
+def build_uber_params(lf: pl.LazyFrame):
+    cols = set(lf.columns)
+
+    def real_col(name):
+        if name in cols:
+            return pl.col(name).cast(pl.Float64, strict=False)
+        return pl.lit(0.0)
+
+    return {
+        'create':[
+            (
+                real_col("base_passenger_fare") +
+                real_col("tolls") +
+                real_col("bcf") +
+                real_col("sales_tax") +
+                real_col("congestion_surcharge") +
+                real_col("airport_fee") +
+                real_col("cbd_congestion_fee")
+            ).alias("total_amount"),
+            pl.col("hvfhs_license_num").replace(
+                {'HV0002':'4', 'HV0003':'2', 'HV0004':'4', 'HV0005':'3'},
+                default=None
+            ).cast(pl.Int32, strict=False).alias("VendorID"),
+            pl.lit("APP").alias("payment_type")
+        ],
+        'rename': {
+            "trip_miles": "trip_distance",
+            "base_passenger_fare": "fare_amount",
+            "tolls": "tolls_amount",
+            "tips": "tip_amount",
+        },
+        'transform_fun':[
+            lambda x: x.filter(pl.col("VendorID") < 4)
+        ]
+    }
+
 uber_params = {
     'create':[
         (
@@ -87,7 +123,9 @@ uber_params = {
             pl.coalesce([pl.col("airport_fee"), pl.lit(0.0)]) +
             pl.coalesce([pl.col("cbd_congestion_fee"), pl.lit(0.0)])
         ).alias("total_amount"),
-        pl.col("hvfhs_license_num").replace({'HV0002':'4', 'HV0003':'2', 'HV0004':'4', 'HV0005':'3'}).cast(pl.Int32, strict=False).alias("VendorID"),
+        pl.col("hvfhs_license_num").replace(
+            {'HV0002':'4', 'HV0003':'2', 'HV0004':'4', 'HV0005':'3'}
+        ).cast(pl.Int32, strict=False).alias("VendorID"),
         pl.lit("APP").alias("payment_type")
     ],
     'rename': {

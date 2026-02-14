@@ -14,7 +14,7 @@ from textual.widgets import (
 )
 
 
-def get_years_months_vendors() -> tuple[list[str], list[str], list[str]] | None:
+def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | None:
     from bs4 import BeautifulSoup
     import requests as rq
 
@@ -22,29 +22,26 @@ def get_years_months_vendors() -> tuple[list[str], list[str], list[str]] | None:
     if response.status_code // 100 != 2:
         print(f"[Error] Status code: {response.status_code}")
         return None
-    
+
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # Get available years
-    years = [tag.get("id")[3:] for tag in soup.find_all("div", {"class": "faq-answers"})]
+    dates = {
+        tag_div.get("id")[3:]: {
+            tag_strong.text: f"{tag_div.get("id")[3:]}-{i+1:0>2}"
+            for i, tag_strong in enumerate(tag_div.find_all("strong"))
+        }
+        for tag_div in soup.find_all("div", {"class": "faq-answers"})
+    }
 
-    
-    months = list()
     vendors = list()
     for td in soup.find_all("td"):
-        # Get available months
-        for strong in td.find_all("strong"):
-            m = strong.get_text(strip=True)
-            if m not in months:
-                months.append(m)
-
         # Get available vendors
         for link in td.find_all("a"):
             v = link.get("title")[:-13]
             if v not in vendors:
                 vendors.append(v)
 
-    return (years, months, vendors)
+    return (dates, vendors)
 
 
 
@@ -61,9 +58,8 @@ class Pipeline(App):
 
     def __init__(self):
         super().__init__()
-        self.years, self.months, self.vendors = get_years_months_vendors()
-        self.selected_years = []
-        self.selected_months = []
+        self.dates, self.vendors = get_years_months_vendors()
+        self.selected_dates = None
 
 
     def add_log(self, message: str, status: str = "INFO"):
@@ -101,19 +97,16 @@ class Pipeline(App):
 
 
     def open_date_picker(self):
-        def handle_dates(data):
-            if data:
-                self.selected_years = data["years"]
-                self.selected_months = data["months"]
+        def handle_return(data):
+            if data is not None:
+                self.selected_dates = data
 
         self.push_screen(
             DatePickerModal(
-                self.years,
-                self.months,
-                self.selected_years,
-                self.selected_months
+                self.dates,
+                self.selected_dates
             ),
-            handle_dates
+            handle_return
         )
 
 
@@ -151,13 +144,24 @@ class Pipeline(App):
             save_lazy_frame
         )
 
-        
         dl_mode = self.query_one("#dl_mode_selector").value
         transf = self.query_one("#tf_selector").is_selected
         vendor_mode = self.query_one("#dl_selector").value
-        years = self.selected_years
-        months = self.selected_months
-        
+        date_mode = self.query_one("#date_selector").value
+
+        if date_mode == "All":
+            dates = []
+            for month in self.dates.values():
+                for val in month.values():
+                    dates.append(val)
+            dates = sorted(dates)
+        else:
+            if self.selected_dates == None or len(self.selected_dates) == 0:
+                self.notify("No dates were selected.")
+                return
+
+            dates = sorted(list(self.selected_dates))
+
         # Get vendors to download
         vendors = []
         vendor_map = {
@@ -181,10 +185,11 @@ class Pipeline(App):
         self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
 
         if dl_mode != "None" or len(vendors) == 0:
-            for group in product(years, months, vendors):
+            for group in product(dates, vendors):
+                date = group[0].split("-")
 
                 # Check for duplicate is Missing Only is selected
-                file_path = Path(Path.cwd(), "data", str(group[0]), str(group[1]), f"{group[2]}.parquet")
+                file_path = Path(Path.cwd(), "data", *date, f"{group[1]}.parquet")
                 if dl_mode == "Missing Only" and file_path.exists():
                     continue
 
@@ -221,7 +226,7 @@ class Pipeline(App):
                         message="Please wait...",
                         title="Transforming columns"
                     )
-                    lf = apply_transformations(lf, group[2])
+                    lf = apply_transformations(lf, group[1])
                     self.notify_and_log(
                         message=f"Data transformed correctly {list(group)}!",
                         title="Transformation successful",
@@ -233,7 +238,7 @@ class Pipeline(App):
                     message="Please wait...",
                     title="Saving data to file"
                 )
-                save_lazy_frame(lf, *group)
+                save_lazy_frame(lf, *date, group[1])
                 self.notify_and_log(
                     message=f"File saved correctly! {list(group)}",
                     title="File save successful",

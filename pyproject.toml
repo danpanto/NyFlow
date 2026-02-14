@@ -10,13 +10,17 @@ dependencies = [
     "duckdb>=1.4.3",
     "fastapi>=0.128.0",
     "ipykernel>=7.1.0",
+    "loadenv>=0.1.1",
     "matplotlib>=3.10.8",
+    "minio>=7.2.20",
     "nbformat>=5.10.4",
     "pandas>=3.0.0",
     "plotly>=6.5.2",
     "polars>=1.37.1",
     "pyarrow>=23.0.0",
     "pyspark>=4.1.1",
+    "python-dotenv>=1.2.1",
+    "rich>=14.3.1",
     "scikit-learn>=1.8.0",
     "textual>=7.4.0",
     "uvicorn>=0.40.0",
@@ -31,3 +35,6 @@ packages = ["visualization"]
 
 [project.scripts]
 visual = "visualization.app.main:main"
+
+[tool.setuptools]
+packages = ["minio"]

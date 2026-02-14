@@ -1,13 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>C-ity Enjoyers</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/css/leaflet.css">
-</head>
-<body>
-    <div id="map"></div>
-    <script src="/static/js/leaflet.js"></script>
-    <script src="/static/js/map.js"></script>
-</body>
+    <head>
+        <title>NYflow</title>
+        <link rel="stylesheet" href="/static/css/styles.css">
+        <link rel="stylesheet" href="/static/css/leaflet.css">
+
+        <script src="/static/js/leaflet.js"></script>
+        <script type="module" src="/static/js/main.js" defer></script>
+    </head>
+    <body>
+        <div id="map-view"></div> <div class="title-container"> <img src="/static/img/logo.webp" class="title-logo" alt="Logo" />
+            <span class="title-text">NyFlow</span>
+        </div>
+        <theme-btn></theme-btn>
+        <bottom-drawer title="Layers">
+            <layer-selector selected="neighbourhoods">
+                <button layer="neighbourhoods">Neighbourhoods</button>
+                <button layer="total_trips">Total trips</button>
+                <button layer="total_price">Total price</button>
+                <button layer="mean_price">Mean price</button>
+                <button layer="total_tip">Total tip</button>
+                <button layer="mean_tip">Mean tip</button>
+                <button layer="mean_dist_start">Mean distance (start)</button>
+                <button layer="mean_dist_end">Mean distance (end)</button>
+            </layer-selector>
+        </bottom-drawer> 
+    </body>
 </html>

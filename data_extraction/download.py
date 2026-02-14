@@ -2,23 +2,8 @@ import duckdb
 import polars as pl
 from pathlib import Path
 
-month_map = {
-    "January":      "01",
-    "February":     "02",
-    "March":        "03",
-    "April":        "04",
-    "May":          "05",
-    "June":         "06",
-    "July":         "07",
-    "August":       "08",
-    "September":    "09",
-    "October":      "10",
-    "November":     "11",
-    "December":     "12",
-}
 
-
-def get_lazy_frame(year: int, month: str, vendor: str) -> tuple:
+def get_lazy_frame(date: str, vendor: str) -> tuple:
     import requests as rq
     import io
 
@@ -27,46 +12,48 @@ def get_lazy_frame(year: int, month: str, vendor: str) -> tuple:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         "Referer": url,
-        "Accept": "application/octet-stream" 
+        "Accept": "application/octet-stream; application/x-www-form-urlencoded" 
     }
 
     session = rq.Session()
     session.headers.update(headers)
 
     session.get(url)
-    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{year}-{month_map[month]}.parquet"
-    parquet_response = session.get(file_url, stream=True)
+    file_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{vendor}_tripdata_{date}.parquet"
 
-    if parquet_response.status_code // 100 != 2:
-        return (-1, parquet_response.status_code)
+    with session.get(file_url, stream=True) as parquet_response:
+        if parquet_response.status_code // 100 != 2:
+            return (-1, parquet_response.status_code)
 
-    content_type = parquet_response.headers.get('Content-Type', '')
+        magic_bytes = parquet_response.raw.read(4)
+        if magic_bytes != b"PAR1":
+            return (-2, f"Invalid Parquet Magic Bytes: {magic_bytes}")
 
-    if content_type != "binary/octet-stream":
-        return (-2, content_type)
+        file_data = magic_bytes + parquet_response.raw.read()
 
-    return (pl.read_parquet(io.BytesIO(parquet_response.content)).lazy(), file_url)
+    return (pl.read_parquet(io.BytesIO(file_data)).lazy(), file_url)
 
 
 def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
-    from data_preprocessing.field_tranformations import normalize_to_target_schema, yellow_params, green_params, uber_params
-    
-    params = {}
-
-    match vendor:
-        case "yellow":
-            params = yellow_params
-
-        case "green":
-            params = green_params
-
-        case "fhvhv":
-            params = uber_params
-
-    return normalize_to_target_schema(
-        lf,
-        **params
+    from data_preprocessing.field_tranformations import (
+        normalize_to_target_schema,
+        yellow_params,
+        green_params,
+        build_uber_params
     )
+    
+    param_builders = {
+        "yellow": lambda lf: yellow_params,
+        "green": lambda lf: green_params,
+        "fhvhv": build_uber_params,
+    }
+
+    try:
+        params = param_builders[vendor](lf)
+    except KeyError:
+        raise ValueError(f"Unknown vendor: {vendor}")
+
+    return normalize_to_target_schema(lf, **params)
 
 
 def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Path:

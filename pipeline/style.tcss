@@ -50,13 +50,24 @@ SelectionList:focus {
     color: $accent;
 }
 
-#modal-footer {
-    height: 3;
-    align: center middle;
+#main-container {
+    height: 25;
 }
 
-#modal-footer Button {
-    margin: 0 2;
+#date-tree {
+    width: 1fr;
+    height: 100%;
+}
+
+#modal-sidebar {
+    width: auto;
+    height: 100%;
+    align: center top;
+    padding: 0 1;
+}
+
+#modal-sidebar Button {
+    width: 100%;
 }
 
 .focuseable {
@@ -147,4 +158,37 @@ SelectionList:focus {
 .down-right {
     align: right bottom;
     height: 4;
+}
+
+/* Match the dimensions of your old lists-container */
+SelectionTree {
+    background: $surface;
+    color: $text;
+    border: none;
+    width: 100%;
+    height: 20; /* Matches your #lists-container height */
+    margin-bottom: 1;
+    padding: 0 1;
+}
+
+/* The guide lines connecting branches */
+SelectionTree > .tree--guides {
+    color: $boost;
+}
+
+/* The hover/focus state of the lines in the tree */
+SelectionTree > .tree--cursor {
+    background: $accent;
+    color: white;
+    text-style: bold;
+}
+
+/* When the tree itself is focused */
+SelectionTree:focus {
+    color: $accent;
+}
+
+/* Optional: style the tree root if you decide to show it */
+SelectionTree > .tree--label {
+    padding: 0 1;
 }
