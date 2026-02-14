@@ -5,11 +5,12 @@ from pathlib import Path
 import uvicorn
 
 from .api import router
+from .setup import lifespan
 
 base_path = Path(__file__).resolve().parents[1]
 
 # Create app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Mount the static content
 app.mount("/static", StaticFiles(directory=base_path/"static"), name="static")
@@ -27,5 +28,7 @@ async def root(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
-
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=8000)
+    except SystemExit:
+        exit(-1)

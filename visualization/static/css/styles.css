@@ -1,16 +1,105 @@
-body {
+:root {
+    --app-bg: #f3f4f6;
+    --app-bg-secondary: #e5e7eb;
+    --app-text: #1f2937;
+    --app-text-accent: #2563eb;
+    --app-text-title: #111827;
+    --map-bg: #d4dadc;
+}
+
+html.dark {
+    --app-bg: #1f2937;
+    --app-bg-secondary: #374151;
+    --app-text: #f3f4f6;
+    --app-text-accent: #60a5fa;
+    --app-text-title: #ffffff;
+    --map-bg: #262626;
+}
+
+body, html {
     margin: 0;
     padding: 0;
-    display: flex;
     height: 100vh;
+    width: 100vw;
+    overflow: hidden;
     font-family: sans-serif;
 }
 
-#map {
-    width: 100vw;
-    height: 100vh;
+#map-view {
+    position: absolute;
+    top 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    background: var(--map-bg);
 }
 
-.zones_overlay {
-    transition: fill-opacity 0.3s ease;
-};
+theme-btn {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+}
+
+
+.title-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 1;
+}
+
+.title-logo {
+    height: 2.8rem; 
+    width: auto;
+    display: block;
+
+    filter: 
+        drop-shadow(1px 1px 0 var(--app-bg)) 
+        drop-shadow(-1px -1px 0 var(--app-bg)) 
+        drop-shadow(1px -1px 0 var(--app-bg)) 
+        drop-shadow(-1px 1px 0 var(--app-bg))
+        drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+}
+
+.title-text {
+    font-family: sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+
+    color: var(--app-text);
+
+    text-shadow: 
+        2px 0 var(--app-bg), -2px 0 var(--app-bg), 
+        0 2px var(--app-bg), 0 -2px var(--app-bg),
+        1px 1px var(--app-bg), -1px -1px var(--app-bg), 
+        1px -1px var(--app-bg), -1px 1px var(--app-bg),
+        0 3px 6px rgba(0,0,0,0.5);
+
+}
+
+.layer-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    justify-content: center;
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.layer-btn {
+    padding: 10px;
+    
+    font-family: sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+    border-radius: 10px;
+}
+
+.layer-btn:hover {
+    background: var(--app-bg-secondary);
+}
