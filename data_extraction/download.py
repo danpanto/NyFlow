@@ -34,24 +34,25 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
 
 
 def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
-    from data_preprocessing.field_tranformations import normalize_to_target_schema, yellow_params, green_params, uber_params
-    
-    params = {}
-
-    match vendor:
-        case "yellow":
-            params = yellow_params
-
-        case "green":
-            params = green_params
-
-        case "fhvhv":
-            params = uber_params
-
-    return normalize_to_target_schema(
-        lf,
-        **params
+    from data_preprocessing.field_tranformations import (
+        normalize_to_target_schema,
+        yellow_params,
+        green_params,
+        build_uber_params
     )
+    
+    param_builders = {
+        "yellow": lambda lf: yellow_params,
+        "green": lambda lf: green_params,
+        "fhvhv": build_uber_params,
+    }
+
+    try:
+        params = param_builders[vendor](lf)
+    except KeyError:
+        raise ValueError(f"Unknown vendor: {vendor}")
+
+    return normalize_to_target_schema(lf, **params)
 
 
 def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Path:
