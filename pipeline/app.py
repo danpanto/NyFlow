@@ -147,8 +147,16 @@ class Pipeline(App):
         dl_mode = self.query_one("#dl_mode_selector").value
         transf = self.query_one("#tf_selector").is_selected
         vendor_mode = self.query_one("#dl_selector").value
-        dates = sorted(list(self.selected_dates))
-        
+
+        if dl_mode == "All":
+            dates = []
+            for month in self.dates.values():
+                for val in month.values():
+                    dates.append(val)
+            dates = sorted(dates)
+        else:
+            dates = sorted(list(self.selected_dates))
+
         # Get vendors to download
         vendors = []
         vendor_map = {
