@@ -81,16 +81,17 @@ class MinioSparkClient:
         hadoop_path = self._Path(full_path)
         fs = self._FileSystem.get(hadoop_path.toUri(), self._Conf)
 
-        if fs.exists(hadoop_path):
-            if fs.getFileStatus(hadoop_path).isDirectory():
-                raise PermissionError(f"Refusing to delete '{full_path}'. Use rmdir() to delete directories.")
-            
-            if fs.delete(hadoop_path):
-                print(f"Successfully deleted: {full_path}")
-            else:
-                print(f"Failed to delete: {full_path}")
-        else:
+        if not fs.exists(hadoop_path):
             print(f"File '{full_path}' does not exist")
+            return
+
+        if fs.getFileStatus(hadoop_path).isDirectory():
+            raise PermissionError(f"Refusing to delete '{full_path} (is a directory)'. Use rmdir() to delete it.")
+        
+        if fs.delete(hadoop_path):
+            print(f"Successfully deleted: {full_path}")
+        else:
+            print(f"Failed to delete: {full_path}")
 
 
     def rmdir(self, path: str, force: bool = False):
@@ -101,19 +102,19 @@ class MinioSparkClient:
         hadoop_path = self._Path(full_path)
         fs = self._FileSystem.get(hadoop_path.toUri(), self._Conf)
 
-        if fs.exists(hadoop_path):
-            if not fs.getFileStatus(hadoop_path).isDirectory():
-                raise PermissionError(f"Refusing to delete '{full_path}'. Use rm() to delete files.")
+        if not fs.exists(hadoop_path):
+            raise FileNotFoundError(f"Directory '{full_path}' does not exist")
 
-            if len(fs.listStatus(hadoop_path)) > 0 and not force:
-                raise PermissionError(f"Refusing to delete '{full_path}' (directory is not empty). Use force=True.")
-            
-            if fs.delete(hadoop_path, True):
-                print(f"Successfully deleted: {full_path}")
-            else:
-                print(f"Failed to delete: {full_path}")
+        if not fs.getFileStatus(hadoop_path).isDirectory():
+            raise PermissionError(f"Refusing to delete '{full_path}'. Use rm() to delete files.")
+
+        if len(fs.listStatus(hadoop_path)) > 0 and not force:
+            raise PermissionError(f"Refusing to delete '{full_path}' (directory is not empty). Use force=True.")
+        
+        if fs.delete(hadoop_path, True):
+            print(f"Successfully deleted: {full_path}")
         else:
-            print(f"Directory '{full_path}' does not exist")
+            print(f"Failed to delete: {full_path}")
 
 
     def read_parquet(self, path, **options):
