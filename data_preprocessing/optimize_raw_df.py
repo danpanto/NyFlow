@@ -26,10 +26,7 @@ nyc_schema_optimization_labels: dict[str, list[str]] = {
         "trip_time",
     ],
     "float32": [
-        "trip_distance", "trip_miles"
-    ],
-    "money": [
-        "fare_amount", "extra", "mta_tax", "tip_amount", 
+        "trip_distance", "trip_miles", "fare_amount", "extra", "mta_tax", "tip_amount", 
         "tolls_amount", "ehail_fee", "improvement_surcharge", "total_amount", 
         "congestion_surcharge", "cbd_congestion_fee",
         "base_passenger_fare", "tolls", "bcf", "sales_tax", 

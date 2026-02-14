@@ -15,6 +15,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 REQUIRED_FILES = {
     "taxi_zones.geojson": "cityenjoyer/taxi_zones.geojson",
+    "aggregation.parquet": "cityenjoyer/visualization_aggregated.parquet",
 }
 
 @asynccontextmanager

@@ -1,7 +1,7 @@
 import { BaseLayer } from "./BaseLayer.js";
 import { NeighbourhoodZoneController } from "./NeighbourhoodZoneController.js";
 import { filterService } from "./services/FilterService.js";
-import { ZoneInfo } from "./ZoneInfo.js";
+import { ZoneInfo } from "./components/ZoneInfo.js";
 
 export class NeighbourhoodLayer extends BaseLayer {
     constructor(mapManager, backend) {
@@ -36,7 +36,6 @@ export class NeighbourhoodLayer extends BaseLayer {
     }
 
     onSelectedZone(zone) {
-        console.log(zone);
         this.zoneInfoDiv.zone = zone;
     }
 }

@@ -4,6 +4,7 @@ import { MapManager } from "./MapManager.js";
 import { ZoneBackend } from "./ZoneBackend.js";
 import { NeighbourhoodLayer } from "./NeighbourhoodLayer.js";
 
+import { ControlPanel } from "./components/ControlPanel.js";
 import { ThemeButton } from "./components/ThemeButton.js";
 import { BottomDrawer } from "./components/BottomDrawer.js";
 import { LayerSelector } from "./components/LayerSelector.js";
@@ -31,4 +32,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DEBUG
     window.themeService = themeService;
     window.selectLayer = (name) => mapManager.toggleLayer(name, true);
+
 });

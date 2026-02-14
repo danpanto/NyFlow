@@ -1,4 +1,4 @@
-import { zoneData } from "./services/ZoneDataService.js";
+import { zoneData } from "../services/ZoneDataService.js";
 
 export class ZoneInfo extends HTMLElement {
     constructor() {
@@ -30,9 +30,9 @@ export class ZoneInfo extends HTMLElement {
             <style>
                 :host {
                     position: absolute;
-                    top: 15px;
-                    right: 15px;
-                    z-index: 40;
+                    bottom:20px;
+                    right: 20px;
+                    z-index: 1;
 
                     display: block;
                     padding: 15px;

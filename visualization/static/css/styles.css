@@ -5,6 +5,8 @@
     --app-text-accent: #2563eb;
     --app-text-title: #111827;
     --map-bg: #d4dadc;
+    --stepper-bg: #111827;
+    --stepper-text: #ffffff;
 }
 
 html.dark {
@@ -14,6 +16,8 @@ html.dark {
     --app-text-accent: #60a5fa;
     --app-text-title: #ffffff;
     --map-bg: #262626;
+    --stepper-bg: #e5e7eb;
+    --stepper-text: #111827;
 }
 
 body, html {
@@ -37,11 +41,16 @@ body, html {
 
 theme-btn {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
+    top: 20px;
+    right: 20px;
 }
 
-
+control-panel {
+    position: absolute;
+    bottom: 20px; 
+    left: 20px; 
+    z-index: 1;
+}
 .title-container {
     position: absolute;
     top: 10px;
