@@ -108,9 +108,14 @@ export class DataQueryLayer extends BaseLayer {
     }
 
     onSelectedZone(zone) {
+        if(!zone) {
+            this.zoneInfoDiv.visible = false;
+            return;
+        }
+
         const lastZoneData = this.data[zone]; 
         
-        if(!zone || lastZoneData === null || lastZoneData === undefined) {
+        if(!lastZoneData === null) {
             this.zoneInfoDiv.visible = false;
             return;
         }
