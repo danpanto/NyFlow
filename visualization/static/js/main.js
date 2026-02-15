@@ -4,11 +4,13 @@ import { MapManager } from "./MapManager.js";
 import { ZoneBackend } from "./ZoneBackend.js";
 import { NeighbourhoodLayer } from "./NeighbourhoodLayer.js";
 import { DataQueryLayer } from "./DataQueryLayer.js";
-import { queryService, SUPPORTED_VARIABLES } from "./services/QueryService.js";
+import { queryService } from "./services/QueryService.js";
+import { SUPPORTED_VARIABLES } from "./queryVariables.js";
 
 import { ControlPanel } from "./components/ControlPanel.js";
 import { ThemeButton } from "./components/ThemeButton.js";
 import { BottomDrawer } from "./components/BottomDrawer.js";
+import { RightDrawer } from "./components/RightDrawer.js";
 import { LayerSelector } from "./components/LayerSelector.js";
 
 document.addEventListener('DOMContentLoaded', async () => {

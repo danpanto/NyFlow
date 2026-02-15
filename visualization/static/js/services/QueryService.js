@@ -1,19 +1,7 @@
 import { LRUCache } from "../LRUCache.js";
 import { filterService } from "./FilterService.js";
+import { SUPPORTED_VARIABLES } from "../queryVariables.js";
 
-export const SUPPORTED_VARIABLES = [
-    "total_trips",
-    "total_price", 
-    "mean_price",
-    "total_tip",
-    "mean_tip",
-    "mean_distance",
-    "mean_duration",
-    "mean_tip_time",
-    "mean_tip_dis",
-    "mean_price_time",
-    "mean_price_dis"
-];
 
 class QueryService extends EventTarget {
     constructor() {
@@ -39,20 +27,56 @@ class QueryService extends EventTarget {
 
         filterService.addListener("date", this._onFilterChange);
         filterService.addListener("vendors", this._onFilterChange);
+        filterService.addListener("zones", this._onFilterChange);
     }
 
     get activeVariables() {
         return Object.keys(this._listenerCounts).filter(v => this._listenerCounts[v] > 0);
     }
 
+    _getStandardFilterState() {
+        if (!filterService.dateRange) return null;
 
-    _getFilterState() {
         return {
             date: filterService.dateRange,
             vendors: Array.from(filterService.vendors).sort()
         };
     }
 
+    _getAggFilterState() {
+        if (!filterService.dateRange) return null;
+
+        const minDate = new Date(filterService.dateRange.min);
+        let maxDate = new Date(filterService.dateRange.max);
+
+        const diffMs = maxDate.getTime() - minDate.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffHours < 24) {
+            maxDate = new Date(minDate.getTime() + (24 * 60 * 60 * 1000));
+        }
+
+        const finalDiffHours = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60);
+        const finalDiffDays = finalDiffHours / 24;
+
+        let time_grouping;
+        if (finalDiffDays <= 7) {
+            time_grouping = "hour";
+        } else if (finalDiffDays <= 365) {
+            time_grouping = "day";
+        } else {
+            time_grouping = "week";
+        }
+
+        const zones = Array.from(filterService.zones);
+
+        return {
+            date: { min: minDate.toISOString(), max: maxDate.toISOString() },
+            vendors: Array.from(filterService.vendors).sort(),
+            zones: zones.sort((a, b) => a - b),
+            time_grouping: time_grouping
+        };
+    }
     _getVariableCacheKey(filterState, variable) {
         return JSON.stringify({ ...filterState, variable });
     }
@@ -63,15 +87,24 @@ class QueryService extends EventTarget {
 
     async _query() {
         const activeVars = this.activeVariables;
-
         if (activeVars.length === 0) return;
 
-        const filterState = this._getFilterState();
+        const standardVars = activeVars.filter(v => !v.startsWith('agg-'));
+        const aggVars = activeVars.filter(v => v.startsWith('agg-'));
+
+        await Promise.all([
+            this._fetchGroup(standardVars, this._getStandardFilterState(), false),
+            this._fetchGroup(aggVars, this._getAggFilterState(), true)
+        ]);
+    }
+
+    async _fetchGroup(variables, filterState, isAgg) {
+        if (variables.length === 0) return;
 
         const variablesToFetch = [];
         const cachedVarsToBroadcast = [];
 
-        activeVars.forEach(variable => {
+        variables.forEach(variable => {
             const key = this._getVariableCacheKey(filterState, variable);
             const cachedData = this._cache.get(key);
 
@@ -83,23 +116,25 @@ class QueryService extends EventTarget {
             }
         });
 
-
-        // 4. Immediately broadcast variables we found in the cache
+        // Broadcast cached instantly
         if (cachedVarsToBroadcast.length > 0) {
             this._broadcast(cachedVarsToBroadcast, false);
         }
 
-        // If everything was cached, we are done!
         if (variablesToFetch.length === 0) return;
 
-        // 5. Fetch ONLY the missing variables from the backend
         this._loading = true;
-        this._broadcast(variablesToFetch, true); // Tell only missing charts they are loading
+        this._broadcast(variablesToFetch, true);
 
         try {
+            // If it's an agg variable, strip "agg-" for the backend request
+            const backendVariables = isAgg 
+                ? variablesToFetch.map(v => v.replace('agg-', '')) 
+                : variablesToFetch;
+
             const payload = {
                 ...filterState,
-                variables: variablesToFetch // e.g., ["total_amount"] (count was cached)
+                variables: backendVariables
             };
 
             const response = await fetch('/api/query', {
@@ -112,10 +147,14 @@ class QueryService extends EventTarget {
             
             if (result.status === "ok" && result.data) {
                 variablesToFetch.forEach(variable => {
-                    if (result.data[variable] !== undefined) {
-                        const key = this._getVariableCacheKey(filterState, variable);
-                        this._cache.set(key, result.data[variable]);
-                        this._data[variable] = result.data[variable];
+                    // Re-map the backend's variable name back to the frontend's variable name
+                    const backendKey = isAgg ? variable.replace('agg-', '') : variable;
+                    const responseData = result.data[backendKey];
+
+                    if (responseData !== undefined) {
+                        const cacheKey = this._getVariableCacheKey(filterState, variable);
+                        this._cache.set(cacheKey, responseData);
+                        this._data[variable] = responseData;
                     }
                 });
             } else {
@@ -129,7 +168,6 @@ class QueryService extends EventTarget {
         }
     }
 
-    // 7. Pass explicit loading state so cached charts don't show spinners
     _broadcast(variables, isLoading) {
         variables.forEach(variable => {
             this.dispatchEvent(new CustomEvent(`query-${variable}`, {
@@ -143,15 +181,28 @@ class QueryService extends EventTarget {
 
     addListener(variable, callback) {
         if (this._listenerCounts[variable] === undefined) {
-            console.warn(`Variable '${variable}' is not in SUPPORTED_VARIABLES.`);
+            // Only warn if it's not an aggregation variable
+            if (!variable.startsWith('agg-')) {
+                console.warn(`Variable '${variable}' is not in SUPPORTED_VARIABLES.`);
+            }
             this._listenerCounts[variable] = 0;
+            
+            // Setup dynamic getter for the new variable
+            if (!this.hasOwnProperty(variable)) {
+                Object.defineProperty(this, variable, {
+                    get: () => this._data[variable] || null,
+                    enumerable: true
+                });
+            }
         }
 
         this._listenerCounts[variable]++;
         const internalWrapper = (e) => callback(e.detail.value, e.detail.loading);
         this.addEventListener(`query-${variable}`, internalWrapper);
 
-        const filterState = this._getFilterState();
+        // Determine which filter state to use based on the variable prefix
+        const isAgg = variable.startsWith('agg-');
+        const filterState = isAgg ? this._getAggFilterState() : this._getStandardFilterState();
         const key = this._getVariableCacheKey(filterState, variable);
         const cachedData = this._cache.get(key);
 
