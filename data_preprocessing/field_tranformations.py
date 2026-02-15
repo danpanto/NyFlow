@@ -4,24 +4,24 @@ import polars as pl
 
 # Unified schema of the resulting table, common to all vendors, so they can be easily merged
 UNIFIED_SCHEMA = [
-    pl.col("VendorID").cast(pl.String, strict=False).alias("VendorID"), # 0 taxi, green: 1, uber:2, lyft: 3, other:drop
+    pl.col("VendorID").cast(pl.Int8, strict=False).alias("VendorID"), # 0 taxi, green: 1, uber:2, lyft: 3, other:drop
 
     pl.col("pickup_datetime").cast(pl.Datetime("us"), strict=False).alias("pickup_datetime"),
     pl.col("dropoff_datetime").cast(pl.Datetime("us"), strict=False).alias("dropoff_datetime"),
 
-    pl.col("trip_distance").cast(pl.Float64, strict=False).alias("trip_distance"),
+    pl.col("trip_distance").cast(pl.Float32, strict=False).alias("trip_distance"),
 
-    pl.col("PULocationID").cast(pl.Int32, strict=False).alias("PULocationID"),
-    pl.col("DOLocationID").cast(pl.Int32, strict=False).alias("DOLocationID"),
+    pl.col("PULocationID").cast(pl.Int16, strict=False).alias("PULocationID"),
+    pl.col("DOLocationID").cast(pl.Int16, strict=False).alias("DOLocationID"),
 
     pl.col("payment_type").cast(pl.String, strict=False).alias("payment_type"),
 
-    pl.col("fare_amount").cast(pl.Float64, strict=False).alias("fare_amount"),
-    pl.col("tip_amount").cast(pl.Float64, strict=False).alias("tip_amount"),
-    pl.col("tolls_amount").cast(pl.Float64, strict=False).alias("tolls_amount"),
+    pl.col("fare_amount").cast(pl.Float32, strict=False).alias("fare_amount"),
+    pl.col("tip_amount").cast(pl.Float32, strict=False).alias("tip_amount"),
+    pl.col("tolls_amount").cast(pl.Float32, strict=False).alias("tolls_amount"),
 
-    pl.col("total_amount").cast(pl.Float64, strict=False).alias("total_amount"),
-    pl.col("airport_fee").cast(pl.Float64, strict=False).alias("airport_fee"),
+    pl.col("total_amount").cast(pl.Float32, strict=False).alias("total_amount"),
+    pl.col("airport_fee").cast(pl.Float32, strict=False).alias("airport_fee"),
 ]
 
 
@@ -71,7 +71,7 @@ def _build_yellow_params(lf: pl.LazyFrame) -> dict:
 
     return {
         'create':[
-            pl.lit(1).alias("VendorID"),
+            pl.lit(0).alias("VendorID"),
             _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type")
         ],
         'rename' : {
@@ -96,7 +96,7 @@ def _build_green_params(lf: pl.LazyFrame) -> dict:
 
     return {
         'create': [
-            pl.lit(0).alias("VendorID"),
+            pl.lit(1).alias("VendorID"),
             _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type"),
             pl.lit(0).alias("airport_fee"),
         ],
