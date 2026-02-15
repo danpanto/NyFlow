@@ -11,6 +11,7 @@ class MinioPD2:
         endpoint = os.getenv("MINIO_ENDPOINT", "").replace("http://", "").replace("https://", "")
         access_key = os.getenv("MINIO_ACCESS_KEY")
         secret_key = os.getenv("MINIO_SECRET_KEY")
+        print(endpoint, access_key, secret_key)
 
         self.client = Minio(
             endpoint,
@@ -73,6 +74,51 @@ class MinioPD2:
 
         except S3Error as exc:
             print(f"Error detectado: {exc}")
+
+    def download_file(self, local_destination="./data", remote_folder="cityenjoyer", file_name = None):
+        """
+        Downloads a specific file from the Minio bucket to a local destination. If the file already exists locally, it will skip the download.
+        
+        :param self: The instance of the MinioPD2 class.
+        :param local_destination: The local path where the file will be downloaded.
+        :param remote_folder: The remote folder in Minio where the file is located.
+        :param file_name: The name of the specific file to download.
+        """
+        bucket = self.bucket_name
+        local_path = Path(local_destination)
+        local_path.mkdir(parents=True, exist_ok=True)
+
+        try:
+            objects = self.client.list_objects(bucket, prefix=f"{remote_folder}/", recursive=True)
+            obj = None
+            for o in objects:
+                if Path(o.object_name).name == file_name:
+                    obj = o
+                    break
+            
+            if obj is None:
+                print(f"Archivo {file_name} no encontrado en el directorio remoto {remote_folder}")
+                return
+
+            print(obj)
+            file_name = Path(obj.object_name).name
+            dest_path = local_path / file_name
+            
+            if dest_path.exists():
+                print(f"Encontrado archivo local: {dest_path}")
+                return
+            print(f"Descargando {obj.object_name}...")
+            
+            self.client.fget_object(
+                bucket, 
+                obj.object_name, 
+                dest_path
+            )
+            print(f"¡Guardado en! {dest_path}")
+
+        except S3Error as exc:
+            print(f"Error detectado: {exc}")
+
 
 if __name__ == "__main__":
     minio = MinioPD2()
