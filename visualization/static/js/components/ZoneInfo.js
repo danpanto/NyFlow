@@ -1,36 +1,71 @@
-import { zoneData } from "../services/ZoneDataService.js";
-
 export class ZoneInfo extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-        this._zone = null;
+        this._heading = "";
+        this._data = null; 
+        this._visible = true;
     }
 
-    get zone() {
-        return this._zone;
+    get heading() {
+        return this._heading;
     }
 
-    set zone(value) {
-        if(value === this._zone) return;
-        this._zone = value;
+    get visible() {
+        return this._visible;
+    }
+
+    set visible(value) {
+        const isVisible = !!value; 
+
+        if(isVisible === this._visible) return;
+
+        this._visible = isVisible;
+
+        if (this._visible) {
+            this.style.display = 'block';
+        } else {
+            this.style.display = 'none';
+        }
+    }
+
+    set heading(value) {
+        if(value === this._heading) return;
+        this._heading = value;
+        this.render();
+    }
+
+    get data() {
+        return this._data;
+    }
+
+    set data(value) {
+        if(value === this._data) return;
+        this._data = value;
         this.render();
     }
 
     render() {
-        if(!this._zone) {
+        if(!this._data && !this._heading) {
             this.shadowRoot.innerHTML = "";
             return;
         }
 
-        const neighbourhood = zoneData.getBorough(this._zone);
-        const name = zoneData.getName(this._zone)
+        let dataRows = "";
+        if (this._data) {
+            for (const [key, value] of Object.entries(this._data)) {
+                dataRows += `<p><span>${key}:</span> ${value}</p>`;
+            }
+        }
+
+        // Conditionally render the heading
+        const headingElement = this._heading ? `<h3>${this._heading}</h3>` : "";
 
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     position: absolute;
-                    bottom:20px;
+                    bottom: 20px;
                     right: 20px;
                     z-index: 1;
 
@@ -45,6 +80,7 @@ export class ZoneInfo extends HTMLElement {
                 
                 p {
                     margin: 5px 0;
+                    font-size: 14px;
                     color: var(--app-text);
                 }
                 
@@ -55,16 +91,15 @@ export class ZoneInfo extends HTMLElement {
 
                 h3 {
                     margin-top: 0;
+                    font-size: 16px;
                     text-align: center;
                     color: var(--app-text-title);
                 }
-
             </style>
             
             <div>
-                <h3>${name}</h3>
-                <p><span>Zone ID:</span> ${this._zone}</p>
-                <p><span>Neighbourhood:</span> ${neighbourhood}</p>
+                ${headingElement}
+                ${dataRows}
             </div>
         `;
     }

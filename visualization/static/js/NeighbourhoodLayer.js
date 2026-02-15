@@ -2,6 +2,7 @@ import { BaseLayer } from "./BaseLayer.js";
 import { NeighbourhoodZoneController } from "./NeighbourhoodZoneController.js";
 import { filterService } from "./services/FilterService.js";
 import { ZoneInfo } from "./components/ZoneInfo.js";
+import { zoneData } from "./services/ZoneDataService.js";
 
 export class NeighbourhoodLayer extends BaseLayer {
     constructor(mapManager, backend) {
@@ -25,6 +26,7 @@ export class NeighbourhoodLayer extends BaseLayer {
         filterService.selectZone(filterService.lastZone, true, true);
 
         this.mapManager.toggleLayer(this.name, true);
+        this.onSelectedZone(filterService.lastZone);
     }
 
     unbind() {
@@ -37,6 +39,20 @@ export class NeighbourhoodLayer extends BaseLayer {
     }
 
     onSelectedZone(zone) {
-        this.zoneInfoDiv.zone = zone;
+        if(!zone) {
+            this.zoneInfoDiv.visible = false;
+            return;
+        }
+        
+        this.zoneInfoDiv.visible = true;
+
+        const name = zoneData.getName(zone);
+        const borough = zoneData.getBorough(zone);
+
+        this.zoneInfoDiv.heading = name;
+        this.zoneInfoDiv.data = {
+            "Zone ID": zone,
+            "Borough": borough
+        };
     }
 }

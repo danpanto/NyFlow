@@ -28,7 +28,7 @@ export class GradientLegend extends HTMLElement {
                 .legend-title { 
                     font-weight: bold; 
                     margin-bottom: 10px; 
-                    font-size: 14px;
+                    font-size: 16px;
                     color: var(--app-text-title);
                     text-transform: capitalize;
                 }
