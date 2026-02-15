@@ -156,14 +156,12 @@ def load_minio_client() -> Minio | None:
             else:
                 console.print("[bold red][!] No keys found in provided input.[/bold red]")
 
-        console.print("\n[bold white on red] FATAL: Initialization failed. Raising Exception. [/bold white on red]")
-        sys.tracebacklimit = 0
-        raise SystemExit(1)
+        console.print("\n[bold white on red] Error: Initialization failed. Raising Exception. [/bold white on red]")
+        raise Exception("Minio Loading Exception")
 
-    except NetworkReachabilityError:
-            console.print("\n[bold white on red] FATAL: Network is unreachable. Aborting startup immediately. [/bold white on red]")
-            sys.tracebacklimit = 0
-            raise SystemExit(1)
+    except NetworkReachabilityError as e:
+        console.print("\n[bold white on red] Error: Network is unreachable. [/bold white on red]")
+        raise e
 
 def sync_verify_and_download(client: Minio, bucket: str, obj_name: str, file_path: Path, progress: Progress) -> None:
     task_id = progress.add_task(f"[cyan]Checking {file_path.name}...", total=None)
