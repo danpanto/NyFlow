@@ -42,6 +42,10 @@ uv run -m visualization.app.main
 ```
 After running the command it will give you a local url which you can use to use the graphic interface.
 
+#### Note
+
+Some layers allow to do multiple selections if you press CTRL while selecting the zone.
+
 ### Pipeline Tool
 To execute the pipeline in the `pipeline` folder, run:
 ```bash

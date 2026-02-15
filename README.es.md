@@ -42,6 +42,10 @@ uv run -m visualization.app.main
 ```
 Una vez ejecutada se te proporcionará una url local donde se mostrará la interfaz gráfica.
 
+#### Note
+
+Algunas capas permiten hacer selección múltiple si pulsas CTRL mientras seleccionas la zona.
+
 ### Pipeline 
 para usar el pipeline de descarga de  `pipeline` ejecuta la siguiente línea:
 ```bash
