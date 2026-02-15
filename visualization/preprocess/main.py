@@ -39,8 +39,7 @@ def main():
             .group_by(groupbyCols)
             .agg(
                 pl.len().alias("count"),
-                *[pl.col(name).sum().alias(f"{name}_sum") for name in aggregationCols],
-                *[pl.col(name).mean().alias(f"{name}_mean") for name in aggregationCols]
+                *[pl.col(name).sum().alias(name) for name in aggregationCols],
             )
             .sort(groupbyCols)
         )

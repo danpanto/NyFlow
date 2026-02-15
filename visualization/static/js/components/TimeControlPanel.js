@@ -154,12 +154,30 @@ export class TimeControlPanel extends HTMLElement {
         this.isAllMode = false;
         this.preAllStart = null; 
         this.unsubscribeFilter = null;
+        
+        // NEW: Flag to track if we've already loaded the initial data limits
+        this.isInitialized = false; 
     }
 
     connectedCallback() {
-        this.populateHourSelects();
+        if (!this.startHour.options.length) {
+            this.populateHourSelects();
+        }
+
         this.init();
+
+        this.setupEventListeners();
+        this.unsubscribeFilter = filterService.addListener("date", (r) => this.updateInputs(r));
         
+        if (filterService.dateRange && filterService.dateRange.min) {
+            this.updateInputs(filterService.dateRange);
+        }
+    }
+
+    setupEventListeners() {
+        if (this._listenersAdded) return;
+        this._listenersAdded = true;
+
         this.startDate.addEventListener('change', () => this.handleManualInput());
         this.startHour.addEventListener('change', () => this.handleManualInput());
         this.endDate.addEventListener('change', () => this.handleManualInput());
@@ -179,8 +197,6 @@ export class TimeControlPanel extends HTMLElement {
 
         this.btnBack.addEventListener('click', () => this.shiftWindow(-1));
         this.btnForward.addEventListener('click', () => this.shiftWindow(1));
-
-        this.unsubscribeFilter = filterService.addListener("date", (r) => this.updateInputs(r));
     }
 
     disconnectedCallback() {
@@ -191,12 +207,20 @@ export class TimeControlPanel extends HTMLElement {
     }
 
     async init() {
+
+        if (this.isInitialized) return;
+
         try {
             const range = await dataRangeservice.load(); 
             this.minAllowedDate = range.min;
             this.maxAllowedDate = range.max;
+            
             this.setInitialState();
-        } catch (err) { console.error("Init failed", err); }
+            
+            this.isInitialized = true;
+        } catch (err) { 
+            console.error("Init failed", err); 
+        }
     }
 
     setInitialState() {
@@ -204,12 +228,13 @@ export class TimeControlPanel extends HTMLElement {
         this.shadowRoot.querySelector('.range-btn[data-unit="all"]').classList.add('active');
         this.shadowRoot.querySelector('.step-btn[data-unit="d"]').classList.add('active');
 
+        // This pushes the global state, which will trigger updateInputs()
+        // via the listener we set up in connectedCallback
         filterService.selectDateRange({
             min: this.minAllowedDate,
             max: this.maxAllowedDate,
         });
     }
-
     populateHourSelects() {
         let optionsHtml = '';
         for(let i = 0; i < 24; i++) {

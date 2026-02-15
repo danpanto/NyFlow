@@ -2,7 +2,9 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import json
+import polars as pl
 
+from polars.functions import aggregation
 from rich.console import Console
 from .setup_minio import load_minio_client, ensure_files_downloaded
 
@@ -22,6 +24,11 @@ REQUIRED_FILES = {
 async def lifespan(app: FastAPI):
     console.print("[bold green]>>> Starting application...[/bold green]")
 
+    app.state.minio_client = load_minio_client()
+    await ensure_files_downloaded(app.state.minio_client, "pd2", CACHE_DIR, REQUIRED_FILES)
+
+    app.state.lf = pl.scan_parquet(CACHE_DIR / "aggregation.parquet")
+
     try:
         path = (data_path / "taxi_zones.geojson").resolve()
         with path.open("r") as f:
@@ -34,8 +41,10 @@ async def lifespan(app: FastAPI):
         console.print("[bold red][!] Error: taxi_zones.geojson is not a valid JSON file.[/bold red]")
         app.state.taxi_zones = None
 
-    app.state.minio_client = load_minio_client()
-    await ensure_files_downloaded(app.state.minio_client, "pd2", CACHE_DIR, REQUIRED_FILES)
+   
+    features = app.state.taxi_zones["features"]
+    ids = [int(feature["properties"]["locationid"]) for feature in features]
+    app.state.ids = pl.DataFrame({"PULocationID": ids}).lazy()
 
     yield
 

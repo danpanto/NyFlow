@@ -29,11 +29,23 @@ export class ZoneBackend {
         }
         this.activeController = null;
         this.map = null;
+        this.refresh();
     }
 
     refresh() {
-        if (this.layer && this.activeController) {
+        if (!this.layer) return;
+
+        if (this.activeController) {
             this.layer.setStyle((feature) => this.activeController.getStyle(this._getId(feature)));
+            this.layer.eachLayer((l) => {
+                this.layer.resetStyle(l);
+            });
+        } else {
+            this.layer.setStyle(() => ({ 
+                opacity: 0, 
+                fillOpacity: 0, 
+                interactive: false
+            }));
         }
     }
 

@@ -3,6 +3,8 @@ import { LayerSwapper } from "./LayerSwapper.js";
 import { MapManager } from "./MapManager.js";
 import { ZoneBackend } from "./ZoneBackend.js";
 import { NeighbourhoodLayer } from "./NeighbourhoodLayer.js";
+import { DataQueryLayer } from "./DataQueryLayer.js";
+import { queryService, SUPPORTED_VARIABLES } from "./services/QueryService.js";
 
 import { ControlPanel } from "./components/ControlPanel.js";
 import { ThemeButton } from "./components/ThemeButton.js";
@@ -26,6 +28,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let layerSwapperData = new Map();
     layerSwapperData[neighbourhoodLayer.name] = neighbourhoodLayer;
+
+    SUPPORTED_VARIABLES.forEach((v) => {
+        const layer = new DataQueryLayer(mapManager, sharedBackend, v);
+        layerSwapperData[v] = layer;
+    });
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 

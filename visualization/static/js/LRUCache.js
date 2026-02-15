@@ -1,4 +1,4 @@
-class LRUCache {
+export class LRUCache {
   constructor(capacity = 50) {
     this.capacity = capacity;
     this.cache = new Map();

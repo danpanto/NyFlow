@@ -17,7 +17,6 @@ export class SelectionZoneController extends ZoneController {
     }
 
     onClick(e, id) {
-        console.log(id);
         this.selectedId = id;
         this.backend.refresh(); 
     }

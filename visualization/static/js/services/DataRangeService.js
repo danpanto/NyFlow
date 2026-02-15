@@ -24,7 +24,6 @@ export class DataRangeService {
                     max: new Date(data["max"]),
                     min: new Date(data["min"]),
                 };
-                console.log(data);
 
                 return this._range;
             } catch (e) {

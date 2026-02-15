@@ -136,7 +136,6 @@ export class VendorControlPanel extends HTMLElement {
         this.clearBtn.addEventListener('click', () => {
             filterService.selectVendor(null);
         });
-
         this.unsubscribeFilter = filterService.addListener("vendors", (vendors) => this.syncVisuals(vendors));
     }
 
@@ -155,7 +154,7 @@ export class VendorControlPanel extends HTMLElement {
             const vendorKeys = Object.keys(vendors);
 
             if (filterService.vendors !== null && filterService.vendors !== undefined) {
-                this.syncVisuals(filterService.vendor);
+                this.syncVisuals(filterService.vendors);
             } 
              
             else if (vendorKeys.length > 0) {

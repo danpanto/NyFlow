@@ -20,16 +20,17 @@ export class NeighbourhoodLayer extends BaseLayer {
     }
 
     bind() {
-        this.mapManager.toggleLayer(this.name, true);
         document.body.appendChild(this.zoneInfoDiv);
         this.unsubscribeSelectZone = filterService.addListener("zones", (_) => { this.onSelectedZone(filterService.lastZone); })
+        filterService.selectZone(filterService.lastZone, true, true);
+
+        this.mapManager.toggleLayer(this.name, true);
     }
 
     unbind() {
         this.mapManager.toggleLayer(this.name, false);
         this.zoneInfoDiv.remove();
-
-        if(this.unsubscribeSelectZone()) {
+        if(this.unsubscribeSelectZone) {
             this.unsubscribeSelectZone();
             this.unsubscribeSelectZone = null;
         }

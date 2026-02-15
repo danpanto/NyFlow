@@ -37,7 +37,6 @@ class FilterService extends EventTarget {
 
     selectDateRange(date) {
         if(this._dateRange == date) return;
-        console.log(date);
         this._dateRange = date;
         this._sendEvent("date", this._dateRange);
     }
@@ -53,7 +52,6 @@ class FilterService extends EventTarget {
         if (unique) {
             // If it's already the ONLY selected zone, we don't need to clear and trigger a repaint
             const isAlreadyOnlySelection = this._zones.size === 1 && this._zones.has(zone) && select;
-
             if (this._zones.size > 0 && !isAlreadyOnlySelection) {
                 this._zones.clear();
                 changed = true;
@@ -89,7 +87,6 @@ class FilterService extends EventTarget {
 
     selectVendor(vendorId, unique = false) {
         let changed = false;
-        console.log(this._vendors, vendorId, "HI");
         if (unique) {
             // If it's already the ONLY selected vendor, don't clear and trigger repaint
             const isAlreadyOnlySelection = this._vendors.size === 1 && this._vendors.has(vendorId);

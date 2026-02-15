@@ -53,7 +53,6 @@ export class NeighbourhoodZoneController extends ZoneController {
     onHover(e, id) {
         const target = e.target;
         const isSelected = filterService.isSelectedZone(id);
-
         if(isSelected) return;
 
         target.setStyle({
@@ -73,11 +72,8 @@ export class NeighbourhoodZoneController extends ZoneController {
     }
 
     onClick(e, id) {
-        const isMultiSelect = e.originalEvent.ctrlKey || e.originalEvent.metaKey;
-        const isCurrentlySelected = filterService.isSelectedZone(id);
-        const isSelecting = isMultiSelect ? !isCurrentlySelected : true;
-
-        filterService.selectZone(id, isSelecting, !isMultiSelect);
+        const isSelected = filterService.isSelectedZone(id);
+        filterService.selectZone(id, !isSelected, true);
 
         this.backend.refresh(); 
     }
