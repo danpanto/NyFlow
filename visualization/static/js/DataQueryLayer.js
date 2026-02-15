@@ -6,6 +6,7 @@ import { GradientLegend } from "./components/GradientLegend.js";
 import { filterService } from "./services/FilterService.js";
 import { zoneData } from "./services/ZoneDataService.js";
 import { ZoneInfo } from "./components/ZoneInfo.js";
+import { VARIABLE_CONFIG } from "./queryVariables.js";
 
 export class DataQueryLayer extends BaseLayer {
     constructor(mapManager, backend, variable) {
@@ -19,7 +20,7 @@ export class DataQueryLayer extends BaseLayer {
         this.baseAppName = "NyFlow";
 
         this.data = null;
-        this.gradient = new Gradient('magma', 12);
+        this.gradient = new Gradient('magma', 0);
         this.mapController = new DataQueryController(backend, this.gradient);
 
         mapManager.addLayer(this.variable, this.mapController);
@@ -30,7 +31,7 @@ export class DataQueryLayer extends BaseLayer {
         });
 
         this.legend = document.createElement("gradient-legend");
-        this.legend.setAttribute("title", this.variable);
+        this.legend.setAttribute("layer-id", this.variable);
 
         this.zoneInfoDiv = document.createElement("zone-info");
 
@@ -58,12 +59,15 @@ export class DataQueryLayer extends BaseLayer {
         document.body.appendChild(this.controlPanel);
         document.body.appendChild(this.uiWrapper);
 
+        const config = VARIABLE_CONFIG[this.variable] || {};
+        const layerName = config.longName || this.variable;
+
+        document.title = `${this.baseAppName} • ${layerName}`;
+
         const layerTitleElement = document.querySelector('.layer-title-text');
         if (layerTitleElement) {
-            layerTitleElement.textContent = `• ${this.variable}`; // Uses a bullet/dot
+            layerTitleElement.textContent = `• ${layerName}`; 
         }
-
-        document.title = `${this.baseAppName} • ${this.variable}`;
 
 
         this.mapManager.toggleLayer(this.variable, true);
@@ -88,9 +92,7 @@ export class DataQueryLayer extends BaseLayer {
         this.mapManager.toggleLayer(this.variable, false);
 
         const layerTitleElement = document.querySelector('.layer-title-text');
-        if (layerTitleElement) {
-            layerTitleElement.textContent = ""; 
-        }
+        if (layerTitleElement) layerTitleElement.textContent = ""; 
 
         if (this.unsubscribe) {
             this.unsubscribe();
@@ -106,8 +108,9 @@ export class DataQueryLayer extends BaseLayer {
     }
 
     onSelectedZone(zone) {
-        const lastZoneData = this.data[zone];
-        if(!zone || !lastZoneData) {
+        const lastZoneData = this.data[zone]; 
+        
+        if(!zone || lastZoneData === null || lastZoneData === undefined) {
             this.zoneInfoDiv.visible = false;
             return;
         }
@@ -115,12 +118,21 @@ export class DataQueryLayer extends BaseLayer {
         this.zoneInfoDiv.visible = true;
         
         const name = zoneData.getName(zone);
-        const value = this.formatter.format(lastZoneData);
+
+        const config = VARIABLE_CONFIG[this.variable] || {};
+        
+        let formattedValue = config.formatter ? config.formatter(lastZoneData) : lastZoneData;
+        
+        if (config.units && config.units !== "USD") {
+            formattedValue = `${formattedValue} ${config.units}`;
+        }
+
+        const valueLabel = config.shortName || "Value";
         
         this.zoneInfoDiv.heading = name;
         this.zoneInfoDiv.data = {
             "Zone ID": zone,
-            "Value": value,
+            [valueLabel]: formattedValue
         };
     }
 }

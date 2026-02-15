@@ -1,40 +1,32 @@
+import { VARIABLE_CONFIG } from "../queryVariables.js";
+
 export class GradientLegend extends HTMLElement {
     constructor() {
         super();
-        // Attach Shadow DOM for encapsulation
         this.attachShadow({ mode: 'open' });
 
-        this.formatter = new Intl.NumberFormat('en-US', { 
-            notation: "compact", 
-            maximumFractionDigits: 1 
-        });
-
-        // Initialize the internal structure
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     display: block;
-                    position: absolute;
-                    bottom: 20px;
-                    right: 20px;
                     background: var(--app-bg);
-                    padding: 15px;
+                    padding: 15px 25px 15px 15px; 
                     border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                     font-family: sans-serif;
                     z-index: 1;
                     min-width: 100px;
                 }
                 .legend-title { 
                     font-weight: bold; 
-                    margin-bottom: 10px; 
+                    margin-bottom: 25px; 
                     font-size: 16px;
                     color: var(--app-text-title);
-                    text-transform: capitalize;
                 }
                 .legend-body { 
                     display: flex; 
                     height: 300px; 
+                    margin-bottom: 10px; 
                 }
                 .legend-bar { 
                     width: 20px; 
@@ -42,64 +34,127 @@ export class GradientLegend extends HTMLElement {
                     border: 1px solid #ddd; 
                 }
                 .legend-markers {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    margin-left: 10px;
-                    font-size: 12px;
-                    color: var(--app-text);
+                    position: relative; 
+                    flex-grow: 1;
+                    /* Increased gap to fit the tick lines */
+                    margin-left: 18px; 
                 }
-            </style>
-            <div class="legend-title"></div>
+                .legend-markers span {
+                    position: absolute; 
+                    left: 0;
+                    /* Centers the text perfectly on the mathematical coordinate */
+                    transform: translateY(50%); 
+                    line-height: 1; 
+                    font-size: 13px;
+                    color: var(--app-text);
+                    white-space: nowrap;
+                    display: flex;
+                    align-items: center;
+                }
+                /* Adds a tiny precision tick-mark connecting text to the bar */
+                .legend-markers span::before {
+                    content: '';
+                    position: absolute;
+                    left: -14px;
+                    width: 8px;
+                    height: 1px;
+                    background-color: var(--app-text);
+                    opacity: 0.3;
+                }
+            </style>            <div class="legend-title"></div>
             <div class="legend-body">
                 <div class="legend-bar"></div>
                 <div class="legend-markers"></div>
             </div>
         `;
 
-        // Cache DOM references
         this.titleElement = this.shadowRoot.querySelector('.legend-title');
         this.barElement = this.shadowRoot.querySelector('.legend-bar');
         this.markersElement = this.shadowRoot.querySelector('.legend-markers');
     }
 
-    // Observe the 'title' attribute so we can update it directly from HTML
     static get observedAttributes() {
-        return ['title'];
+        return ['layer-id'];
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'title' && oldValue !== newValue) {
-            // Replace underscores with spaces for cleaner display
-            this.titleElement.textContent = newValue.replace(/_/g, ' ');
+        if (name === 'layer-id' && oldValue !== newValue) {
+            const config = VARIABLE_CONFIG[newValue] || {};
+            this.titleElement.textContent = config.shortName || newValue.replace(/_/g, ' ');
+            this.currentLayerId = newValue;
         }
     }
 
     update(gradientInstance, min, max, absoluteMax = max) {
         this.barElement.style.background = gradientInstance.getCss(0);
-
         this.markersElement.innerHTML = '';
 
-        const numMarkers = gradientInstance.steps ? gradientInstance.steps + 1 : 5;
-        
-        for (let i = 0; i < numMarkers; i++) {
-            // Calculate value from Top (max) to Bottom (min)
-            const fraction = 1 - (i / (numMarkers - 1));
-            const value = min + (max - min) * fraction;
+        const config = VARIABLE_CONFIG[this.currentLayerId] || {};
+        const fallbackFormatter = new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 });
+        const formatValue = config.formatter || ((val) => fallbackFormatter.format(val));
 
+        const range = max - min;
+
+        // Fallback for flat data (e.g., if all zones on the map have exactly the same value)
+        if (range <= 0) {
             const span = document.createElement("span");
-            let formattedText = this.formatter.format(value);
+            let text = formatValue(min);
+            if (config.units && config.units !== "USD") text += ` ${config.units}`;
+            span.textContent = text;
+            span.style.bottom = "50%";
+            this.markersElement.appendChild(span);
+            return;
+        }
 
-            // If this is the top marker (i === 0) and we clamped the outliers
-            if (i === 0 && absoluteMax > max) {
+        const numMarkers = 6; 
+        
+        const roughStep = range / (numMarkers - 1);
+        const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+        const normalizedStep = roughStep / magnitude;
+
+        // 2. Strictly use 1, 2, or 5 to ensure perfect 1-decimal boundaries (prevents 0.25, 0.75, etc.)
+        let niceMultiplier;
+        if (normalizedStep < 1.5) niceMultiplier = 1;
+        else if (normalizedStep < 3.5) niceMultiplier = 2; 
+        else if (normalizedStep < 7.5) niceMultiplier = 5;
+        else niceMultiplier = 10;
+
+        const tickStep = niceMultiplier * magnitude;
+
+        // 3. ONLY generate nice ticks that fit within the bounds
+        const firstTick = Math.ceil(min / tickStep) * tickStep;
+        const lastTick = Math.floor(max / tickStep) * tickStep;
+
+        const ticks = [];
+        for (let i = lastTick; i >= firstTick; i -= tickStep) {
+            const val = parseFloat(i.toPrecision(10)); 
+            const position = ((val - min) / range) * 100;
+            ticks.push({ value: val, position });
+        }
+
+        // 3. Render Ticks to DOM
+        ticks.forEach((tick, index) => {
+            const span = document.createElement("span");
+            
+            let formattedText = formatValue(tick.value);
+
+            // Add '+' to the very highest tick if data outliers were clamped
+            if (index === 0 && absoluteMax > max) {
                 formattedText += "+";
             }
 
+            if (config.units && config.units !== "USD") {
+                formattedText += ` ${config.units}`;
+            }
+
             span.textContent = formattedText;
+            
+            // This places the text exactly on the Y-axis according to its true data value
+            span.style.bottom = `${tick.position}%`;
+            
             this.markersElement.appendChild(span);
-        }
-    }
+        });
+    }    
 }
 
-// Register the custom element with the browser
 customElements.define('gradient-legend', GradientLegend);

@@ -1,4 +1,5 @@
 import { filterService } from "../services/FilterService.js";
+import { VARIABLE_CONFIG } from "../queryVariables.js";
 
 export class LayerSelector extends HTMLElement {
     constructor() {
@@ -24,6 +25,13 @@ export class LayerSelector extends HTMLElement {
         } else if (allButtons.length > 0) {
             this.selectLayer(allButtons[0].getAttribute('layer'));
         }
+
+        allButtons.forEach(btn => {
+            const layerId = btn.getAttribute('layer');
+            if (layerId && VARIABLE_CONFIG[layerId]) {
+                btn.textContent = VARIABLE_CONFIG[layerId].shortName;
+            }
+        });
 
         this.render();
     }
