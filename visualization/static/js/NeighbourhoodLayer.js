@@ -25,6 +25,11 @@ export class NeighbourhoodLayer extends BaseLayer {
         this.unsubscribeSelectZone = filterService.addListener("zones", (_) => { this.onSelectedZone(filterService.lastZone); })
         filterService.selectZone(filterService.lastZone, true, true);
 
+        const layerTitleElement = document.querySelector('.layer-title-text');
+        if (layerTitleElement) {
+            layerTitleElement.textContent = `• Neighbourhoods`; // Uses a bullet/dot
+        }
+
         this.mapManager.toggleLayer(this.name, true);
         this.onSelectedZone(filterService.lastZone);
     }
@@ -35,6 +40,11 @@ export class NeighbourhoodLayer extends BaseLayer {
         if(this.unsubscribeSelectZone) {
             this.unsubscribeSelectZone();
             this.unsubscribeSelectZone = null;
+        }
+
+        const layerTitleElement = document.querySelector('.layer-title-text');
+        if (layerTitleElement) {
+            layerTitleElement.textContent = ""; 
         }
     }
 

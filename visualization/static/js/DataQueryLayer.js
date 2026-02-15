@@ -56,8 +56,14 @@ export class DataQueryLayer extends BaseLayer {
         document.body.appendChild(this.controlPanel);
         document.body.appendChild(this.uiWrapper);
 
+        const layerTitleElement = document.querySelector('.layer-title-text');
+        if (layerTitleElement) {
+            layerTitleElement.textContent = `• ${this.variable}`; // Uses a bullet/dot
+        }
+
+
         this.mapManager.toggleLayer(this.variable, true);
-        
+
         this.unsubscribeSelectZone = filterService.addListener("zones", (_) => { this.onSelectedZone(filterService.lastZone); })
         this.unsubscribe = queryService.addListener(this.variable, (data, loading) => {
             if (!loading && data) {
@@ -77,11 +83,15 @@ export class DataQueryLayer extends BaseLayer {
         this.uiWrapper.remove();
         this.mapManager.toggleLayer(this.variable, false);
 
+        const layerTitleElement = document.querySelector('.layer-title-text');
+        if (layerTitleElement) {
+            layerTitleElement.textContent = ""; 
+        }
+
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
         }
-
 
         if (this.unsubscribeSelectZone) {
             this.unsubscribeSelectZone();
