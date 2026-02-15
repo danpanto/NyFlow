@@ -56,7 +56,7 @@ export class DataQueryController extends ZoneController {
         const values = Object.values(this.currentData).sort((a, b) => a - b);
         
         // Calculate the 95th Percentile
-        const p95Index = Math.floor(values.length * 0.90);
+        const p95Index = Math.floor(values.length * 0.95);
         const p95Value = values[p95Index];
 
         this.dataBounds = {

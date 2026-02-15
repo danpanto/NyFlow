@@ -7,7 +7,12 @@ export const SUPPORTED_VARIABLES = [
     "mean_price",
     "total_tip",
     "mean_tip",
-    "mean_distance"
+    "mean_distance",
+    "mean_duration",
+    "mean_tip_time",
+    "mean_tip_dis",
+    "mean_price_time",
+    "mean_price_dis"
 ];
 
 class QueryService extends EventTarget {

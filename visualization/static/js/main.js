@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     layerSwapperData[neighbourhoodLayer.name] = neighbourhoodLayer;
 
     SUPPORTED_VARIABLES.forEach((v) => {
+        console.log(v);
         const layer = new DataQueryLayer(mapManager, sharedBackend, v);
         layerSwapperData[v] = layer;
     });

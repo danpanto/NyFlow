@@ -47,6 +47,8 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
 
     sumOp = lambda x: pl.col(x).sum()
     meanOp = lambda x: pl.col(x).sum() / pl.col("count").sum()
+    meanDisOp = lambda x: pl.col(x).sum() / pl.col("trip_distance").sum()
+    meanTimeOp = lambda x: pl.col(x).sum() / pl.col("duration").sum()
 
     variable_operations = {
         "total_trips": sumOp("count"),
@@ -55,6 +57,11 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
         "total_tip": sumOp("tip_amount"),
         "mean_tip": meanOp("tip_amount"),
         "mean_distance": meanOp("trip_distance"),
+        "mean_duration": meanOp("duration"),
+        "mean_tip_time": meanTimeOp("tip_amount"),
+        "mean_tip_dis": meanDisOp("tip_amount"),
+        "mean_price_time": meanTimeOp("fare_amount"),
+        "mean_price_dis": meanTimeOp("fare_amount")
     }
 
     active_aggs = [variable_operations[v].alias(v) for v in req.variables if v in variable_operations]

@@ -21,7 +21,7 @@ def main():
         datetimeCols = ["pickup_datetime", "dropoff_datetime"]
         i32Cols = ["PULocationID", "DOLocationID"]
         groupbyCols = ["pickup_datetime", "VendorID", "PULocationID"]
-        aggregationCols = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"]
+        aggregationCols = ["trip_distance", "fare_amount", "tip_amount", "duration", "tolls_amount", "total_amount"]
 
         # 3. Build the transformation and aggregation graph
         lf_agg = (
@@ -33,8 +33,12 @@ def main():
                 )
             )
             .with_columns(
+                (pl.col("dropoff_datetime") - pl.col("pickup_datetime")).dt.total_minutes(fractional = True).alias("duration"),
                 pl.col(datetimeCols).dt.truncate("1h"),
                 pl.col(i32Cols).cast(pl.Int16),
+            )
+            .filter(
+                pl.col("duration") > 0,
             )
             .group_by(groupbyCols)
             .agg(

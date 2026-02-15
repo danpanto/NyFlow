@@ -34,10 +34,10 @@ export class LayerSelector extends HTMLElement {
                 /* The grid container inside the Shadow DOM */
                 .layer-container {
                     display: grid;
-                    grid-template-columns: repeat(2, 1fr);
+                    grid-template-columns: repeat(3, 1fr);
                     gap: 10px;
                     justify-content: center;
-                    max-width: 600px;
+                    max-width: 900px;
                     margin: 0 auto;
                 }
 

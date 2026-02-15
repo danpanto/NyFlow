@@ -34,7 +34,7 @@ export class GradientLegend extends HTMLElement {
                 }
                 .legend-body { 
                     display: flex; 
-                    height: 400px; 
+                    height: 300px; 
                 }
                 .legend-bar { 
                     width: 20px; 
