@@ -16,6 +16,8 @@ export class DataQueryLayer extends BaseLayer {
         this.unsubscribe = null;
         this.unsubscribeSelectZone = null;
 
+        this.baseAppName = "NyFlow";
+
         this.data = null;
         this.gradient = new Gradient('magma', 12);
         this.mapController = new DataQueryController(backend, this.gradient);
@@ -61,6 +63,8 @@ export class DataQueryLayer extends BaseLayer {
             layerTitleElement.textContent = `• ${this.variable}`; // Uses a bullet/dot
         }
 
+        document.title = `${this.baseAppName} • ${this.variable}`;
+
 
         this.mapManager.toggleLayer(this.variable, true);
 
@@ -97,6 +101,8 @@ export class DataQueryLayer extends BaseLayer {
             this.unsubscribeSelectZone();
             this.unsubscribeSelectZone = null;
         }
+
+        document.title = this.baseAppName;
     }
 
     onSelectedZone(zone) {

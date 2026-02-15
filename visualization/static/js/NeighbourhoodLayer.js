@@ -10,6 +10,7 @@ export class NeighbourhoodLayer extends BaseLayer {
 
         this.name = "neighbourhoods";
         this.mapManager = mapManager;
+        this.baseAppName = "NyFlow";
 
         // Add map layer
         const mapController = new NeighbourhoodZoneController(backend);
@@ -29,6 +30,7 @@ export class NeighbourhoodLayer extends BaseLayer {
         if (layerTitleElement) {
             layerTitleElement.textContent = `• Neighbourhoods`; // Uses a bullet/dot
         }
+        document.title = `${this.baseAppName} • Neighbourhoods`;
 
         this.mapManager.toggleLayer(this.name, true);
         this.onSelectedZone(filterService.lastZone);
@@ -46,6 +48,7 @@ export class NeighbourhoodLayer extends BaseLayer {
         if (layerTitleElement) {
             layerTitleElement.textContent = ""; 
         }
+        document.title = this.baseAppName;
     }
 
     onSelectedZone(zone) {
