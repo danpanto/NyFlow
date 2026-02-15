@@ -67,8 +67,6 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
 
     if req.vendors:
         lf = lf.filter(pl.col("VendorID").is_in(req.vendors))
-    
-    lf.show(5);
 
     lf_trips = (
         lf.group_by("PULocationID")
