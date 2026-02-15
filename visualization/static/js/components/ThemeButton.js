@@ -24,11 +24,6 @@ export class ThemeButton extends HTMLElement {
         this.shadowRoot.querySelector('button')
             .addEventListener('click', () => themeService.toggle());
 
-        // Listen for clicks
-        this.shadowRoot.querySelector('button')
-            .addEventListener('click', () => this.toggleTheme());
-
-        // Add listener for theme changes
         this._unsubscribe = themeService.addListener((theme) => {
             this.theme = theme; 
         });
