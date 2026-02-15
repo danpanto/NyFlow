@@ -140,9 +140,9 @@ class Pipeline(App):
         from pathlib import Path
         from data_extraction.download import (
             get_lazy_frame,
-            apply_transformations,
             save_lazy_frame
         )
+        from data_preprocessing.field_tranformations import normalize_to_target_schema
 
         dl_mode = self.query_one("#dl_mode_selector").value
         transf = self.query_one("#tf_selector").is_selected
@@ -226,7 +226,7 @@ class Pipeline(App):
                         message="Please wait...",
                         title="Transforming columns"
                     )
-                    lf = apply_transformations(lf, group[1])
+                    lf = normalize_to_target_schema(lf, group[1])
                     self.notify_and_log(
                         message=f"Data transformed correctly {list(group)}!",
                         title="Transformation successful",
@@ -252,7 +252,8 @@ class Pipeline(App):
 
     @work(exclusive=True, thread=True)
     def run_prep_pipeline(self):
-        from data_extraction.download import merge_lazy_frames, rm_outliers
+        from data_extraction.download import merge_lazy_frames
+        from data_preprocessing.outlier_removal import remove_outliers
         from pathlib import Path
 
 
@@ -296,7 +297,7 @@ class Pipeline(App):
 
             for f in merged_files:
                 try:
-                    rm_outliers(f)
+                    remove_outliers(f)
                 except Exception as outlier_exc:
                     self.notify_and_log(
                         message=f"Error while removing outliers from {f}",

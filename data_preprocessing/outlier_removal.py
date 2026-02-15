@@ -154,7 +154,17 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     intermediate_path.unlink() 
 
 
-def remove_outliers(filepath, outliers_cols):
+def remove_outliers(
+    filepath,
+    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"]
+):
+    """
+    Remove outliers from a specific chunk of data
+
+    Args:
+        filepath    (Path): File containing the data to be filtered
+    """
+
     from textual import log
     con = duckdb.connect("trips.duckdb")
     con.execute("SET memory_limit='12GB'")

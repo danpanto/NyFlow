@@ -1,9 +1,19 @@
-import duckdb
 import polars as pl
 from pathlib import Path
 
 
 def get_lazy_frame(date: str, vendor: str) -> tuple:
+    """
+    Retrieve trip data from a specfic year, month and vendor
+
+    Args:
+        date        (str):      Date represented in the format "yyyy-MM"
+        vendor      (str):      Vendor type
+
+    Returns:
+        out         (tuple):    Returns (int, Any) if error, (polars.LazyFrame, file_url) if success
+    """
+
     import requests as rq
     import io
 
@@ -26,37 +36,28 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
             return (-1, parquet_response.status_code)
 
         magic_bytes = parquet_response.raw.read(4)
-        if magic_bytes != b"PAR1":
-            return (-2, f"Invalid Parquet Magic Bytes: {magic_bytes}")
+        if magic_bytes != b"PAR1":  # Check if the file is really a parquet, more reliable than content-type or extension
+            return (-2, f"Invalid file type: {magic_bytes}")
 
         file_data = magic_bytes + parquet_response.raw.read()
 
     return (pl.read_parquet(io.BytesIO(file_data)).lazy(), file_url)
 
 
-def apply_transformations(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
-    from data_preprocessing.field_tranformations import (
-        normalize_to_target_schema,
-        yellow_params,
-        green_params,
-        build_uber_params
-    )
-    
-    param_builders = {
-        "yellow": lambda lf: yellow_params,
-        "green": lambda lf: green_params,
-        "fhvhv": build_uber_params,
-    }
-
-    try:
-        params = param_builders[vendor](lf)
-    except KeyError:
-        raise ValueError(f"Unknown vendor: {vendor}")
-
-    return normalize_to_target_schema(lf, **params)
-
-
 def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Path:
+    """
+    Save data to a local file on disk
+
+    Args:
+        lf          (pl.LazyFrame): Data as polars' lazy frame
+        year        (int):          Year when data was collected
+        month       (str):          Month when data was collected
+        vendor      (str):          Vendor type
+
+    Returns:
+        out         (Path):         Path to the locally saved file
+    """
+
     month_path = Path.cwd() / "data" / str(year) / month
     month_path.mkdir(parents=True, exist_ok=True)
     filepath = Path(month_path, f"{vendor}.parquet")
@@ -67,9 +68,16 @@ def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Pat
 
 
 def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | None:
-    from pathlib import Path
-    import requests as rq
+    """
+    Merge multiple data scattered through various local files into one (or more, depending on criteria) file
 
+    Args:
+        method          (str):                      How to merge data (by year, month, ...)
+        remove_files    (bool, default = False):    Whether to remove original files after merge
+
+    Returns:
+        out             (list[Path] | None):        List of the new local files (or None if error)
+    """
 
     data_path = Path.cwd() / "data"
     merge_path = data_path / "merged"
@@ -153,24 +161,3 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
                 p.rmdir()
 
     return ret_paths
-    
-
-def rm_outliers(filepath: Path):
-    from data_preprocessing.outliers.outlier_del import remove_outliers
-
-    remove_outliers(
-        filepath=filepath,
-        outliers_cols=[
-            "trip_distance",
-            "fare_amount",
-            "tip_amount",
-            "tolls_amount",
-            "total_amount"
-        ]
-    )
-
-
-if __name__ == '__main__':
-    lf = get_lazy_frame(year=2025, month="January", vendor="yellow")
-    transf_lf = apply_transformations(lf, "yellow", "Add/Del columns")
-    save_lazy_frame(transf_lf, year=2025, month="January", vendor="yellow")
