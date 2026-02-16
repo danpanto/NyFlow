@@ -20,8 +20,7 @@ UNIFIED_SCHEMA = [
     pl.col("tip_amount").cast(pl.Float32, strict=False).alias("tip_amount"),
     pl.col("tolls_amount").cast(pl.Float32, strict=False).alias("tolls_amount"),
 
-    pl.col("total_amount").cast(pl.Float32, strict=False).alias("total_amount"),
-    pl.col("airport_fee").cast(pl.Float32, strict=False).alias("airport_fee"),
+    pl.col("total_amount").cast(pl.Float32, strict=False).alias("total_amount")
 ]
 
 
@@ -54,7 +53,7 @@ def _normalize_payment_type_label(expr: pl.Expr) -> pl.Expr:
         "no charge": "no_charge", "no": "no_charge",
         "dispute": "dispute", "dis": "dispute",
     }
-    return s2.replace_strict(mapping, default=None)
+    return s2.replace_strict(mapping, default="cash")
 
 
 # ---------- 1) Yellow ----------
@@ -77,8 +76,7 @@ def _build_yellow_params(lf: pl.LazyFrame) -> dict:
         'rename' : {
             "tpep_pickup_datetime": "pickup_datetime",
             "tpep_dropoff_datetime": "dropoff_datetime",
-            "Airport_fee": "airport_fee"
-        }
+        },
     }
 
 
@@ -98,12 +96,11 @@ def _build_green_params(lf: pl.LazyFrame) -> dict:
         'create': [
             pl.lit(1).alias("VendorID"),
             _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type"),
-            pl.lit(0).alias("airport_fee"),
         ],
         'rename': {
             "lpep_pickup_datetime": "pickup_datetime",
             "lpep_dropoff_datetime": "dropoff_datetime",
-        }
+        },
     }
 
     
@@ -129,7 +126,6 @@ def _build_fhvhv_params(lf: pl.LazyFrame) -> dict:
                 _real_col("bcf", cols) +
                 _real_col("sales_tax", cols) +
                 _real_col("congestion_surcharge", cols) +
-                _real_col("airport_fee", cols) +
                 _real_col("cbd_congestion_fee", cols)
             ).alias("total_amount"),
             pl.col("hvfhs_license_num").replace(
