@@ -1,48 +1,178 @@
-from pyspark.sql.dataframe import DataFrame
-from pyspark.sql import functions as func
+import polars as pl
 from pathlib import Path
 
 
-def transform_columns(df: DataFrame, vendor: str) -> DataFrame:
+def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
     """
     Apply column transformations to the data
 
     Args:
-        df      (DataFrame):    The spark DataFrame containing the data
-        vendor  (str):          Vendor type
+        lf          (pl.LazyFrame): Data as polars' lazy frame
+        vendor      (str):          Vendor type
 
     Returns:
-        out     (pl.LazyFrame): Returns the new transformed data
+        out         (pl.LazyFrame): Returns the new transformed data
     """
-    from data_preprocessing.column_transformation import (
-        _build_yellow_params,
-        _build_green_params,
-        _build_fhvhv_params,
+
+    from data_preprocessing.field_tranformations import (
+        build_yellow_params,
+        build_green_params,
+        build_fhvhv_params,
         UNIFIED_SCHEMA
     )
 
+
     match vendor:
-        case "yellow":  params = _build_yellow_params(df)
-        case "green":   params = _build_green_params(df)
-        case "fhvhv":   params = _build_fhvhv_params(df)
-        case _:         params = {"create": {}, "rename": {}}
+        case "yellow":
+            params = build_yellow_params(lf)
 
-    # Rename columns
-    for old_col, new_col in params.get("rename", {}).items():
-        if old_col in df.columns:
-            df = df.withColumnRenamed(old_col, new_col)
+        case "green":
+            params = build_green_params(lf)
 
-    # Create/Modify columns
-    for col_name, expr in params.get("create", {}).items():
-        df = df.withColumn(col_name, expr)
+        case "fhvhv":
+            params = build_fhvhv_params(lf)
 
-    # Apply filters
-    if "filter" in params:
-        for cond in params["filter"]:
-            df = df.filter(cond)
+        case _:
+            params = {"create": [], "rename": {}}
 
-    # Just in case
-    if "airport_fee" not in df.columns:
-        df = df.withColumn("airport_fee", func.lit(0.0))
+    lf = (lf.with_columns(params["create"]).rename(params["rename"], strict=False))
+
+    if "apply" in params:
+        for tr_fun in params["apply"]:
+            lf = tr_fun(lf)
     
-    return df.select(*UNIFIED_SCHEMA)
+    return lf.select(UNIFIED_SCHEMA)
+
+
+def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | None:
+    """
+    Merge multiple data scattered through various local files into one (or more, depending on criteria) file
+
+    Args:
+        method          (str):                      How to merge data (by year, month, ...)
+        remove_files    (bool, default = False):    Whether to remove original files after merge
+
+    Returns:
+        out             (list[Path] | None):        List of the new local files (or None if error)
+    """
+
+    data_path = Path.cwd() / "data"
+    merge_path = data_path / "merged"
+    merge_path.mkdir(exist_ok=True)
+
+    files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
+
+    if not files:
+        return None
+
+    ret_paths: list[Path] = []
+
+    if method == "Single file":
+        lfs = [pl.scan_parquet(f) for f in files]
+        file_path = Path(merge_path, "all_merged.parquet")
+        if file_path.exists():
+            file_path.unlink()
+        pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+        ret_paths.append(file_path)
+
+    elif method == "By vendor":
+        vendor_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            vid = f.stem
+            vendor_groups.setdefault(vid, []).append(f)
+
+        # Process each vendor group individually
+        for vid, grouped_files in vendor_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            file_path = Path(merge_path, f"{vid}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
+            
+    elif method == "By month":
+        month_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            month = f.parent.name
+            month_groups.setdefault(month, []).append(f)
+
+        # Process each month group individually
+        for month, grouped_files in month_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            file_path = Path(merge_path, f"{month}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
+
+    elif method == "By year":
+        year_groups = {}
+
+        # Get all files separated by vendor
+        for f in files:
+            year = f.parent.parent.name
+            year_groups.setdefault(year, []).append(f)
+
+        # Process each year group individually
+        for year, grouped_files in year_groups.items():
+            lfs = [pl.scan_parquet(f) for f in grouped_files]
+            file_path = Path(merge_path, f"{year}_merged.parquet")
+            if file_path.exists():
+                file_path.unlink()
+            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
+            ret_paths.append(file_path)
+
+    else: return None
+
+    # Handle original files' deletion
+    if remove_files:
+        for f in files:
+            f.unlink()
+
+        for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
+            if p.is_dir() and not any(p.iterdir()):
+                p.rmdir()
+
+    return ret_paths
+
+
+def remove_outliers(
+    filepath,
+    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"]
+):
+    """
+    Remove outliers from a specific chunk of data
+
+    Args:
+        filepath    (Path): File containing the data to be filtered
+    """
+
+    import duckdb
+    from data_preprocessing.outlier_removal import (
+        get_combined_limits,
+        step_1_sql_filtering,
+        step_2_isolation_forest
+    )
+
+
+    con = duckdb.connect("trips.duckdb")
+    con.execute("SET memory_limit='12GB'")
+
+    PATH_DATA = Path.cwd() / "data"
+
+    f_in = filepath
+    f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
+    f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
+    
+    # 1. Calcular límites combinados (Percentil + IQR)
+    limits = get_combined_limits(con, f_in, outliers_cols)
+    
+    # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
+    step_1_sql_filtering(con, f_in, f_inter, limits)
+    
+    # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
+    step_2_isolation_forest(con, f_inter, f_out, outliers_cols)

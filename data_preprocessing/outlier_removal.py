@@ -152,34 +152,3 @@ def step_2_isolation_forest(con, intermediate_path, final_path, columns):
     # Limpieza
     shutil.rmtree(temp_dir)
     intermediate_path.unlink() 
-
-
-def remove_outliers(
-    filepath,
-    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"]
-):
-    """
-    Remove outliers from a specific chunk of data
-
-    Args:
-        filepath    (Path): File containing the data to be filtered
-    """
-
-    from textual import log
-    con = duckdb.connect("trips.duckdb")
-    con.execute("SET memory_limit='12GB'")
-
-    PATH_DATA = Path.cwd() / "data"
-
-    f_in = filepath
-    f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
-    f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
-    
-    # 1. Calcular límites combinados (Percentil + IQR)
-    limits = get_combined_limits(con, f_in, outliers_cols)
-    
-    # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
-    step_1_sql_filtering(con, f_in, f_inter, limits)
-    
-    # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
-    step_2_isolation_forest(con, f_inter, f_out, outliers_cols)

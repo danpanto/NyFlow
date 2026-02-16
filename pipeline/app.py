@@ -142,7 +142,7 @@ class Pipeline(App):
             get_lazy_frame,
             save_lazy_frame
         )
-        from data_preprocessing.field_tranformations import normalize_to_target_schema
+        from data_preprocessing.preprocess import transform_columns
 
         dl_mode = self.query_one("#dl_mode_selector").value
         transf = self.query_one("#tf_selector").is_selected
@@ -226,7 +226,7 @@ class Pipeline(App):
                         message="Please wait...",
                         title="Transforming columns"
                     )
-                    lf = normalize_to_target_schema(lf, group[1])
+                    lf = transform_columns(lf, group[1])
                     self.notify_and_log(
                         message=f"Data transformed correctly {list(group)}!",
                         title="Transformation successful",
@@ -252,8 +252,7 @@ class Pipeline(App):
 
     @work(exclusive=True, thread=True)
     def run_prep_pipeline(self):
-        from data_extraction.download import merge_lazy_frames
-        from data_preprocessing.outlier_removal import remove_outliers
+        from data_preprocessing.preprocess import merge_lazy_frames, remove_outliers
         from pathlib import Path
 
 

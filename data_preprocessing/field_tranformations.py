@@ -57,7 +57,7 @@ def _normalize_payment_type_label(expr: pl.Expr) -> pl.Expr:
 
 
 # ---------- 1) Yellow ----------
-def _build_yellow_params(lf: pl.LazyFrame) -> dict:
+def build_yellow_params(lf: pl.LazyFrame) -> dict:
     """
     Obtains the transformation params for the yellow taxi data tables
 
@@ -81,7 +81,7 @@ def _build_yellow_params(lf: pl.LazyFrame) -> dict:
 
 
 # ---------- 2) Green ----------
-def _build_green_params(lf: pl.LazyFrame) -> dict:
+def build_green_params(lf: pl.LazyFrame) -> dict:
     """
     Obtains the transformation params for the green taxi data tables
 
@@ -105,7 +105,7 @@ def _build_green_params(lf: pl.LazyFrame) -> dict:
 
     
 # ---------- 3) For-Hire High-Volume Vehicles ----------
-def _build_fhvhv_params(lf: pl.LazyFrame) -> dict:
+def build_fhvhv_params(lf: pl.LazyFrame) -> dict:
     """
     Obtains the transformation params for the fhvhv data tables
 
@@ -144,37 +144,3 @@ def _build_fhvhv_params(lf: pl.LazyFrame) -> dict:
             lambda x: x.filter(pl.col("VendorID") < 4)
         ]
     }
-
-
-def normalize_to_target_schema(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
-    """
-    Apply column transformations to the data
-
-    Args:
-        lf          (pl.LazyFrame): Data as polars' lazy frame
-        vendor      (str):          Vendor type
-
-    Returns:
-        out         (pl.LazyFrame): Returns the new transformed data
-    """
-
-    match vendor:
-        case "yellow":
-            params = _build_yellow_params(lf)
-
-        case "green":
-            params = _build_green_params(lf)
-
-        case "fhvhv":
-            params = _build_fhvhv_params(lf)
-
-        case _:
-            params = {"create": [], "rename": {}}
-
-    lf = (lf.with_columns(params["create"]).rename(params["rename"], strict=False))
-
-    if "apply" in params:
-        for tr_fun in params["apply"]:
-            lf = tr_fun(lf)
-    
-    return lf.select(UNIFIED_SCHEMA)
