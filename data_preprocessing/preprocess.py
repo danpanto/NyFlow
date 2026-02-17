@@ -145,8 +145,6 @@ def remove_outliers(
     outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"],
     group_col: str = "PULocationID"
 ):
-    import pyarrow
-
     def imputar_outlier_expr(col_name):
         q1 = pl.col(col_name).quantile(0.25).over(group_col)
         q3 = pl.col(col_name).quantile(0.75).over(group_col)
@@ -162,7 +160,7 @@ def remove_outliers(
                  .otherwise(pl.col(col_name)) \
                  .alias(col_name)
 
-    lf = pl.scan_parquet(filepath, use_pyarrow=True)
+    lf = pl.scan_parquet(filepath)
 
     lf = lf.with_columns([
         imputar_outlier_expr(col) for col in outliers_cols
