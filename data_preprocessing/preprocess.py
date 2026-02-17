@@ -142,37 +142,31 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
 
 def remove_outliers(
     filepath,
-    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"]
+    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"],
+    group_col: str = "PULocationID"
 ):
-    """
-    Remove outliers from a specific chunk of data
+    import pyarrow
 
-    Args:
-        filepath    (Path): File containing the data to be filtered
-    """
+    def imputar_outlier_expr(col_name):
+        q1 = pl.col(col_name).quantile(0.25).over(group_col)
+        q3 = pl.col(col_name).quantile(0.75).over(group_col)
+        iqr = q3 - q1
+        
+        upper_limit = q3 + 1.5 * iqr
+        lower_limit = q1 - 1.5 * iqr
 
-    import duckdb
-    from data_preprocessing.outlier_removal import (
-        get_combined_limits,
-        step_1_sql_filtering,
-        step_2_isolation_forest
-    )
+        replacement = pl.col(col_name).median().over(group_col)
+        
+        return pl.when((pl.col(col_name) < lower_limit) | (pl.col(col_name) > upper_limit)) \
+                 .then(replacement) \
+                 .otherwise(pl.col(col_name)) \
+                 .alias(col_name)
 
+    lf = pl.scan_parquet(filepath, use_pyarrow=True)
 
-    con = duckdb.connect("trips.duckdb")
-    con.execute("SET memory_limit='12GB'")
+    lf = lf.with_columns([
+        imputar_outlier_expr(col) for col in outliers_cols
+    ])
 
-    PATH_DATA = Path.cwd() / "data"
-
-    f_in = filepath
-    f_inter = PATH_DATA / f"{f_in.stem}_semi_clean.parquet"
-    f_out = PATH_DATA / f"{f_in.stem}_final_clean.parquet"
-    
-    # 1. Calcular límites combinados (Percentil + IQR)
-    limits = get_combined_limits(con, f_in, outliers_cols)
-    
-    # 2. Aplicar filtro estático (DuckDB) -> Genera archivo intermedio
-    step_1_sql_filtering(con, f_in, f_inter, limits)
-    
-    # 3. Aplicar filtro ML (Isolation Forest) -> Genera archivo final
-    step_2_isolation_forest(con, f_inter, f_out, outliers_cols)
+    df_final = lf.collect()
+    df_final.write_parquet(filepath)
