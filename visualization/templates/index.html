@@ -4,7 +4,9 @@
         <title>NYflow</title>
         <link rel="stylesheet" href="/static/css/styles.css">
         <link rel="stylesheet" href="/static/css/leaflet.css">
+        <link rel="stylesheet" href="/static/css/leaflet-routing-machine.css">
         <script src="/static/js/leaflet.js"></script>
+        <script src="/static/js/leaflet-routing-machine.js"></script>
         <script type="module" src="/static/js/main.js" defer></script>
         <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     </head>
@@ -18,6 +20,9 @@
         <bottom-drawer title="Layers">
             <layer-selector selected="neighbourhoods">
                 <button layer="neighbourhoods">Neighbourhoods</button>
+
+                <button layer="routes">Optimal Routes</button>
+
                 <button layer="total_price"></button>
                 <button layer="total_tip"></button>
 

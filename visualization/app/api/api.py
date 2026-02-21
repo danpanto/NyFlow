@@ -3,6 +3,7 @@ from datetime import datetime
 import polars as pl
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
+import numpy as np
 
 router = APIRouter()
 
@@ -50,12 +51,17 @@ class DateRange(BaseModel):
     min: str
     max: str
 
+class ClickPos(BaseModel):
+    lat: float
+    lng: float
+
 class QueryRequest(BaseModel):
     vendors: List[str]
     date: DateRange
     variables: List[str]
     zones: Optional[List[int]] = None # Assuming PULocationID is an integer
     time_grouping: Optional[Literal["week", "day", "hour"]] = None
+    click_pos: Optional[ClickPos] = None
 
 @router.post("/query")
 async def get_dashboard_data(req: QueryRequest, request: Request):
@@ -148,3 +154,56 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
                 ))
 
     return {"status": "ok", "data": response_data}
+
+@router.post("/route")
+async def get_optimal_route(req: QueryRequest, request: Request):
+    route_points = []
+    zone_visit = []
+    start: tuple[float, float] = (req.click_pos.lat, req.click_pos.lng)# if req.click_pos else (40.7580, -73.9855)
+    
+    try:
+        # Seleccionar las 20 zonas más cercanas, filtrar de esas zonas las que más interés tienen y hacer una ruta
+        _, indices = request.app.state.tree.query(np.deg2rad([start]), k=50)
+        row = request.app.state.gdf_zones.iloc[indices[0]]
+        ids_zonas_cercanas = row['locationid'].astype(int).tolist()
+
+
+        startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
+        endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
+        
+        lf = request.app.state.lf
+        lf = lf.filter(pl.col("pickup_datetime").is_between(startDate, endDate))
+        
+        if req.vendors:
+            lf = lf.filter(pl.col("VendorID").is_in(req.vendors))
+
+        # Esto habría que sustituirlo con el resultado del modelo
+        lf = lf.filter(pl.col("PULocationID").is_in(ids_zonas_cercanas))
+
+        # Sacar las 5 zonas de interés
+        top_zone_df = (
+            lf.group_by("PULocationID")
+            .agg(pl.col("count").sum().alias("total_trips"))
+            .sort("total_trips", descending=True)
+            .head(5)
+            .collect()
+        )
+        
+        top_zone_ids = [str(z_id) for z_id in top_zone_df["PULocationID"].to_list()]
+        gdf_busquedas = request.app.state.gdf_zones[request.app.state.gdf_zones["locationid"].isin(top_zone_ids)]
+        for idx, row in gdf_busquedas.iterrows():
+            zone_visit.append((row.geometry.centroid.y, row.geometry.centroid.x))
+
+        if not zone_visit:
+            zone_visit = [(40.7128, -74.0060)]
+
+        route_points = [start] + zone_visit
+            
+    except Exception as e:
+        print(f"Error calculating dynamic destination: {e}")
+        route_points = [
+                (40.7580, -73.9855), 
+                (40.7128, -74.0060)
+        ]           
+        
+    return {"status": "ok", "data": route_points, "zonas": ids_zonas_cercanas}

@@ -5,6 +5,9 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from rich.console import Console
+import geopandas as gpd
+from sklearn.neighbors import BallTree
+import numpy as np
 
 from .setup_minio import load_minio_client, ensure_files_downloaded
 
@@ -78,6 +81,9 @@ async def lifespan(app: FastAPI):
     # 3. Assign to easy-to-use variables
     app.state.lf = app.state.files["aggregation.parquet"]
     app.state.taxi_zones = app.state.files["taxi_zones.geojson"]
+    app.state.gdf_zones = gpd.GeoDataFrame.from_features(app.state.files["taxi_zones.geojson"]["features"])
+    app.state.gdf_zones.set_crs(epsg=4326, inplace=True)
+
 
     # 4. Extract IDs and validate specific GeoJSON business logic
     try:
@@ -90,6 +96,11 @@ async def lifespan(app: FastAPI):
     except ValueError:
         console.print("[bold red][X] Fatal Error: A 'locationid' in the GeoJSON could not be converted to an integer.[/bold red]")
         sys.exit(1)
+
+    # Para las rutas
+    coords = np.array(list(zip(app.state.gdf_zones.geometry.centroid.y, app.state.gdf_zones.geometry.centroid.x)))
+    coords_rad = np.deg2rad(coords)
+    app.state.tree = BallTree(coords_rad, metric='haversine')
 
     yield
 

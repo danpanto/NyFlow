@@ -11,10 +11,10 @@ export class DataQueryController extends ZoneController {
         this.normalOpacity = 0.6; // Increased slightly for better visibility
         this.hoverOpacity = 0.9;
         this.selectOpacity = 1.0;
-        
+
         this.currentData = null;
         this.dataBounds = { min: 0, max: 1 };
-        
+
         // Initialize Gradient (e.g., 'magma' with 7 quantization steps)
         this.gradient = gradient;
 
@@ -26,7 +26,7 @@ export class DataQueryController extends ZoneController {
         const boroughs = zoneData.getAllBoroughs();
         this.palette = paletteFromList(boroughs);
 
-        if(this._visible) {
+        if (this._visible) {
             this.backend.refresh();
         }
     }
@@ -35,26 +35,26 @@ export class DataQueryController extends ZoneController {
         super.update(data);
         let changed = false;
 
-        if(data.click !== undefined) {
+        if (data.click !== undefined) {
             filterService.selectZone(null);
             changed = true;
         }
 
-        if(data.query !== undefined) {
+        if (data.query !== undefined) {
             this.currentData = data.query;
             this._calculateBounds(); // Update min/max for the color scale
             changed = true;
         }
 
-        if(changed) this.backend.refresh();
+        if (changed) this.backend.refresh();
     }
 
     _calculateBounds() {
         if (!this.currentData || Object.keys(this.currentData).length === 0) return;
-        
+
         // Sort values ascending
         const values = Object.values(this.currentData).sort((a, b) => a - b);
-        
+
         // Calculate the 95th Percentile
         const p95Index = Math.floor(values.length * 0.99);
         const p95Value = values[p95Index];
@@ -68,7 +68,7 @@ export class DataQueryController extends ZoneController {
 
     _getNormalizedValue(id) {
         if (!this.currentData || this.currentData[id] === undefined) return null;
-        
+
         const val = this.currentData[id];
         const { min, max } = this.dataBounds;
 
@@ -81,12 +81,12 @@ export class DataQueryController extends ZoneController {
         return (val - min) / (max - min);
     }
     getStyle(id) {
-        if(!this.currentData || this.currentData[id] === undefined) {
-            return { 
-                color: "transparent", 
+        if (!this.currentData || this.currentData[id] === undefined) {
+            return {
+                color: "transparent",
                 fillColor: "transparent",
                 opacity: 0,
-                fillOpacity: 0, 
+                fillOpacity: 0,
                 interactive: true,
                 weight: 1
             };
@@ -94,7 +94,7 @@ export class DataQueryController extends ZoneController {
 
         const isSelected = filterService.isSelectedZone(id);
         const normalized = this._getNormalizedValue(id);
-        
+
         return {
             color: "white",
             fillColor: this.gradient.get(normalized),
@@ -106,7 +106,7 @@ export class DataQueryController extends ZoneController {
     onHover(e, id) {
         const target = e.target;
         const isSelected = filterService.isSelectedZone(id);
-        if(isSelected) return;
+        if (isSelected) return;
         target.setStyle({
             fillOpacity: this.hoverOpacity,
             weight: 1
@@ -116,18 +116,20 @@ export class DataQueryController extends ZoneController {
     onUnhover(e, id) {
         const target = e.target;
         const isSelected = filterService.isSelectedZone(id);
-        if(isSelected) return;
+        if (isSelected) return;
 
         // Reset to the base style defined in getStyle
         target.setStyle(this.getStyle(id));
     }
 
     onClick(e, id) {
+        if (filterService.layer === "routes") return; // Ignore zone selection when routing
+
         const isMultiSelect = e.originalEvent.ctrlKey || e.originalEvent.metaKey;
         const isCurrentlySelected = filterService.isSelectedZone(id);
         const isSelecting = isMultiSelect ? !isCurrentlySelected : true;
 
         filterService.selectZone(id, isSelecting, !isMultiSelect);
-        this.backend.refresh(); 
+        this.backend.refresh();
     }
 }

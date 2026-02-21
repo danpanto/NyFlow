@@ -1,4 +1,5 @@
 import { zoneData } from "./services/ZoneDataService.js";
+import { filterService } from "./services/FilterService.js";
 
 export class ZoneBackend {
     constructor() {
@@ -41,9 +42,9 @@ export class ZoneBackend {
                 this.layer.resetStyle(l);
             });
         } else {
-            this.layer.setStyle(() => ({ 
-                opacity: 0, 
-                fillOpacity: 0, 
+            this.layer.setStyle(() => ({
+                opacity: 0,
+                fillOpacity: 0,
                 interactive: false
             }));
         }
@@ -61,13 +62,15 @@ export class ZoneBackend {
 
             this.layer = L.geoJson(geoJson, {
                 style: (feature) => {
-                    return this.activeController 
+                    return this.activeController
                         ? this.activeController.getStyle(this._getId(feature))
                         : { opacity: 0 };
                 },
                 onEachFeature: (feature, layer) => {
                     layer.on('click', (e) => {
-                        L.DomEvent.stopPropagation(e);
+                        if (filterService.layer !== "routes") {
+                            L.DomEvent.stopPropagation(e);
+                        }
                         this.activeController?.onClick(e, this._getId(feature));
                     });
                     layer.on('mouseover', (e) => this.activeController?.onHover(e, this._getId(feature)));

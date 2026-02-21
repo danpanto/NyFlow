@@ -9,6 +9,7 @@ dependencies = [
     "dash>=3.4.0",
     "duckdb>=1.4.3",
     "fastapi>=0.128.0",
+    "geopandas>=1.1.2",
     "ipykernel>=7.1.0",
     "loadenv>=0.1.1",
     "matplotlib>=3.10.8",
