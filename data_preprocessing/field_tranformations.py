@@ -2,58 +2,33 @@ from __future__ import annotations
 import polars as pl
 
 
+def _coalesce(name, columns):
+    return (pl.col(name) if name in columns else pl.lit(0.0)).cast(pl.Float32)
+
+
+def _to_cents(expr: pl.Expr, dtype):
+    return (expr * 100).round(0).cast(dtype)
+
+
 # Unified schema of the resulting table, common to all vendors, so they can be easily merged
 UNIFIED_SCHEMA = [
-    pl.col("VendorID").cast(pl.Int8, strict=False).alias("VendorID"), # 0 taxi, green: 1, uber:2, lyft: 3, other:drop
+    pl.col("VendorID").cast(pl.Int8).alias("VendorID"),
 
-    pl.col("pickup_datetime").cast(pl.Datetime("us"), strict=False).alias("pickup_datetime"),
-    pl.col("dropoff_datetime").cast(pl.Datetime("us"), strict=False).alias("dropoff_datetime"),
+    pl.col("pickup_datetime").cast(pl.Datetime("us")).alias("pickup_datetime"),
+    pl.col("dropoff_datetime").cast(pl.Datetime("us")).alias("dropoff_datetime"),
 
-    pl.col("trip_distance").cast(pl.Float32, strict=False).alias("trip_distance"),
+    pl.col("trip_distance").cast(pl.Float32).alias("trip_distance"),
 
-    pl.col("PULocationID").cast(pl.Int16, strict=False).alias("PULocationID"),
-    pl.col("DOLocationID").cast(pl.Int16, strict=False).alias("DOLocationID"),
+    pl.col("PULocationID").cast(pl.Int16).alias("PULocationID"),
+    pl.col("DOLocationID").cast(pl.Int16).alias("DOLocationID"),
 
-    pl.col("payment_type").cast(pl.String, strict=False).alias("payment_type"),
+    pl.col("payment_type").cast(pl.Int8).alias("payment_type"),
 
-    pl.col("fare_amount").cast(pl.Float32, strict=False).alias("fare_amount"),
-    pl.col("tip_amount").cast(pl.Float32, strict=False).alias("tip_amount"),
-    pl.col("tolls_amount").cast(pl.Float32, strict=False).alias("tolls_amount"),
-
-    pl.col("total_amount").cast(pl.Float32, strict=False).alias("total_amount")
+    _to_cents(pl.col("tip_amount"), pl.Int64).alias("tip_amount"),
+    _to_cents(pl.col("tolls_amount"), pl.Int64).alias("tolls_amount"),
+    _to_cents(pl.col("fare_amount"), pl.Int64).alias("fare_amount"),
+    _to_cents(pl.col("total_amount"), pl.Int64).alias("total_amount"),
 ]
-
-
-def _real_col(name, columns):
-    if name in columns:
-        return pl.col(name).cast(pl.Float64, strict=False)
-    return pl.lit(0.0)
-
-
-def _normalize_payment_type_label(expr: pl.Expr) -> pl.Expr:
-    s2 = (
-        expr.cast(pl.Utf8, strict=False)
-            .str.strip_chars()
-            .str.replace_all(",", "")
-            .str.to_lowercase()
-    )
-
-    mapping = {
-        # numérico
-        "0": "flex_fare_tip",
-        "1": "credit_card",
-        "2": "cash",
-        "3": "no_charge",
-        "4": "dispute",
-        "5": "unknown",
-        "6": "voided", 
-        # sinónimos texto
-        "credit": "credit_card", "cre": "credit_card", "crd": "credit_card",
-        "cash": "cash", "cas": "cash", "csh": "cash",
-        "no charge": "no_charge", "no": "no_charge",
-        "dispute": "dispute", "dis": "dispute",
-    }
-    return s2.replace_strict(mapping, default="cash")
 
 
 # ---------- 1) Yellow ----------
@@ -68,15 +43,16 @@ def build_yellow_params(lf: pl.LazyFrame) -> dict:
         out (dict):         The params for the transformation
     """
 
+    rename_map = {
+        "tpep_pickup_datetime": "pickup_datetime",
+        "tpep_dropoff_datetime": "dropoff_datetime",
+    }
+
     return {
-        'create':[
-            pl.lit(0).alias("VendorID"),
-            _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type")
+        'rename': rename_map,
+        'create': [
+            pl.lit(0, dtype=pl.Int8).alias("VendorID")
         ],
-        'rename' : {
-            "tpep_pickup_datetime": "pickup_datetime",
-            "tpep_dropoff_datetime": "dropoff_datetime",
-        },
     }
 
 
@@ -92,15 +68,16 @@ def build_green_params(lf: pl.LazyFrame) -> dict:
         out (dict):         The params for the transformation
     """
 
+    rename_map = {
+        "lpep_pickup_datetime": "pickup_datetime",
+        "lpep_dropoff_datetime": "dropoff_datetime",
+    }
+
     return {
+        'rename': rename_map,
         'create': [
-            pl.lit(1).alias("VendorID"),
-            _normalize_payment_type_label(pl.col("payment_type")).alias("payment_type"),
+            pl.lit(1, dtype=pl.Int8).alias("VendorID"),
         ],
-        'rename': {
-            "lpep_pickup_datetime": "pickup_datetime",
-            "lpep_dropoff_datetime": "dropoff_datetime",
-        },
     }
 
     
@@ -116,30 +93,28 @@ def build_fhvhv_params(lf: pl.LazyFrame) -> dict:
         out (dict):         The params for the transformation
     """
 
-    cols = set(lf.columns)
+    rename_map = {
+        "trip_miles": "trip_distance",
+        "base_passenger_fare": "fare_amount",
+        "tolls": "tolls_amount",
+        "tips": "tip_amount",
+    }
+    cols = set(rename_map.get(c, c) for c in lf.collect_schema().names())
 
     return {
+        'rename': rename_map,
         'create': [
             (
-                _real_col("base_passenger_fare", cols) +
-                _real_col("tolls", cols) +
-                _real_col("bcf", cols) +
-                _real_col("sales_tax", cols) +
-                _real_col("congestion_surcharge", cols) +
-                _real_col("cbd_congestion_fee", cols)
+                _coalesce("fare_amount", cols) +
+                _coalesce("tolls_amount", cols) +
+                _coalesce("bcf", cols) +
+                _coalesce("sales_tax", cols) +
+                _coalesce("congestion_surcharge", cols) +
+                _coalesce("cbd_congestion_fee", cols)
             ).alias("total_amount"),
-            pl.col("hvfhs_license_num").replace(
-                {'HV0002':'4', 'HV0003':'2', 'HV0004':'4', 'HV0005':'3'},
-                default=None
-            ).cast(pl.Int32, strict=False).alias("VendorID"),
-            pl.lit("APP").alias("payment_type")
+            pl.col("hvfhs_license_num").replace({'HV0003': 2, 'HV0005': 3}, default=4).alias("VendorID"),
+            pl.lit(7, dtype=pl.Int8).alias("payment_type")
         ],
-        'rename': {
-            "trip_miles": "trip_distance",
-            "base_passenger_fare": "fare_amount",
-            "tolls": "tolls_amount",
-            "tips": "tip_amount",
-        },
         'apply': [
             lambda x: x.filter(pl.col("VendorID") < 4)
         ]

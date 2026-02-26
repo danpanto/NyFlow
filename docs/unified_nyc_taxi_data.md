@@ -13,12 +13,11 @@ Este documento describe el esquema y la lógica de los tres conjuntos de datos p
 | `trip_distance` | Float32 | Distancia del viaje transcurrida en millas reportada por el taxímetro. |
 | `PULocationID` | Int16 | ID de la Zona de Taxi TLC donde comenzó el viaje. |
 | `DOLocationID` | Int16 | ID de la Zona de Taxi TLC donde terminó el viaje. |
-| `payment_type` | String | Indica cómo pagó el pasajero. |
-| `fare_amount` | Float32 | La tarifa de tiempo y distancia calculada por el medidor. |
-| `tip_amount` | Float32 | Cantidad pagada de propina (solo tarjetas de crédito). |
-| `tolls_amount` | Float32 | Importe total de todos los peajes pagados. |
-| `total_amount` | Float32 | Suma total cobrada. No incluye propinas en efectivo. |
-| `airport_fee` | Float32 | Tarifa de $1.25 por recogida en aeropuertos. |
+| `payment_type` | Int8 | Indica cómo pagó el pasajero. |
+| `fare_amount` | Int64 | La tarifa de tiempo y distancia calculada por el medidor (en centavos). |
+| `tip_amount` | Int64 | Cantidad pagada de propina (solo tarjetas de crédito, y en centavos). |
+| `tolls_amount` | Int64 | Importe total de todos los peajes pagados (en centavos). |
+| `total_amount` | Int64 | Suma total cobrada (en centavos). No incluye propinas en efectivo. |
 
 ## Notas Técnicas y Diccionarios
 
@@ -28,3 +27,13 @@ Este documento describe el esquema y la lógica de los tres conjuntos de datos p
 * **2:** Uber
 * **3:** Lyft
 * **4:** Other
+
+**payment_type:**
+* **0:** Flex fare tip
+* **1:** Credit card
+* **2:** Cash
+* **3:** No charge
+* **4:** Dispute
+* **5:** Unknown
+* **6:** Voided
+* **7:** App

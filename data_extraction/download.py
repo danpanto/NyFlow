@@ -58,7 +58,7 @@ def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Pat
         out         (Path):         Path to the locally saved file
     """
 
-    month_path = Path.cwd() / "data" / str(year) / month
+    month_path = Path.cwd() / "data" / str(year) / month.lstrip('0')
     month_path.mkdir(parents=True, exist_ok=True)
     filepath = Path(month_path, f"{vendor}.parquet")
 

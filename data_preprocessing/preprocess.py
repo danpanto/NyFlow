@@ -33,10 +33,16 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
             params = build_fhvhv_params(lf)
 
         case _:
-            params = {"create": [], "rename": {}}
+            params = {"rename": {}, "create": []}
 
-    lf = (lf.with_columns(params["create"]).rename(params["rename"], strict=False))
+    # Rename columns
+    lf = lf.rename(params.get("rename", {}), strict=False)
 
+    # Create new columns
+    if params.get("create"):
+        lf = lf.with_columns(params["create"])
+
+    # Apply filters
     if "apply" in params:
         for tr_fun in params["apply"]:
             lf = tr_fun(lf)
@@ -142,29 +148,38 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
 
 def remove_outliers(
     filepath,
+    messenger,
     outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"],
-    group_col: str = "PULocationID"
+    group_col: str = "PULocationID",
+    k = 3.0
 ):
-    def imputar_outlier_expr(col_name):
-        q1 = pl.col(col_name).quantile(0.25).over(group_col)
-        q3 = pl.col(col_name).quantile(0.75).over(group_col)
-        iqr = q3 - q1
-        
-        upper_limit = q3 + 1.5 * iqr
-        lower_limit = q1 - 1.5 * iqr
-
-        replacement = pl.col(col_name).median().over(group_col)
-        
-        return pl.when((pl.col(col_name) < lower_limit) | (pl.col(col_name) > upper_limit)) \
-                 .then(replacement) \
-                 .otherwise(pl.col(col_name)) \
-                 .alias(col_name)
-
     lf = pl.scan_parquet(filepath)
 
-    lf = lf.with_columns([
-        imputar_outlier_expr(col) for col in outliers_cols
-    ])
+    transformation_exprs = []
 
-    df_final = lf.collect()
-    df_final.write_parquet(filepath)
+    for col in outliers_cols:
+        q1 = pl.col(col).quantile(0.25).over(group_col)
+        q3 = pl.col(col).quantile(0.75).over(group_col)
+        med = pl.col(col).median().over(group_col)
+
+        iqr = q3 - q1
+
+        expr = (
+            pl.when(
+                (pl.col(col) < (q1 - k * iqr)) |
+                (pl.col(col) > (q3 + k * iqr))
+            )
+            .then(med)
+            .otherwise(pl.col(col))
+            .alias(col)
+        )
+
+        transformation_exprs.append(expr)
+
+    messenger("Transforming outliers...")
+
+    lf_final = lf.with_columns(transformation_exprs)
+
+    messenger("Saving to disk...")
+
+    lf_final.sink_parquet(Path(filepath.parent, f"{filepath.stem}_cleaned.parquet"))

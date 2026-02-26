@@ -189,7 +189,7 @@ class Pipeline(App):
                 date = group[0].split("-")
 
                 # Check for duplicate is Missing Only is selected
-                file_path = Path(Path.cwd(), "data", *date, f"{group[1]}.parquet")
+                file_path = Path(Path.cwd(), "data", date[0], date[1].lstrip('0'), f"{group[1]}.parquet")
                 if dl_mode == "Missing Only" and file_path.exists():
                     continue
 
@@ -296,7 +296,7 @@ class Pipeline(App):
 
             for f in merged_files:
                 try:
-                    remove_outliers(f)
+                    remove_outliers(f, self.notify_and_log)
                 except Exception as outlier_exc:
                     self.notify_and_log(
                         message=f"Error while removing outliers from {f}",
