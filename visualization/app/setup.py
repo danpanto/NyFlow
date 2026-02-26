@@ -84,6 +84,8 @@ async def lifespan(app: FastAPI):
     app.state.gdf_zones = gpd.GeoDataFrame.from_features(app.state.files["taxi_zones.geojson"]["features"])
     app.state.gdf_zones.set_crs(epsg=4326, inplace=True)
 
+    #Schema({'pickup_datetime': Datetime(time_unit='us', time_zone=None), 'VendorID': String, 'PULocationID': Int16, 'count': UInt32, 'trip_distance': Float64, 'fare_amount': Float64, 'tip_amount': Float64, 'duration': Float64, 'tolls_amount': Float64, 'total_amount': Float64})
+
 
     # 4. Extract IDs and validate specific GeoJSON business logic
     try:

@@ -38,6 +38,7 @@ export class RouteController extends LayerInterface {
         };
 
         try {
+            console.log("Fetching route with payload:", payload);
             const response = await fetch('/api/route', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -45,11 +46,9 @@ export class RouteController extends LayerInterface {
             });
 
             const result = await response.json();
-            console.log(result.data)
-            console.log(result.zonas)
 
             if (result.status === "ok" && result.data) {
-                // result.data es el array de tuplas lat/long
+                console.log("Route received from backend:", result.data);
                 const waypoints = result.data.map(coord => L.latLng(coord[0], coord[1]));
                 if (this.routingControl) {
                     this.routingControl.setWaypoints(waypoints);
@@ -68,8 +67,26 @@ export class RouteController extends LayerInterface {
         this.routingControl = L.Routing.control({
             waypoints: [],
             routeWhileDragging: false,
-            showAlternatives: false,
-            show: true
+            showAlternatives: true,
+            show: true,
+            router: L.Routing.osrmv1({
+                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                profile: 'driving',
+                routingOptions: {
+                    alternatives: true
+                }
+            })
+        });
+
+        // Register event listener once
+        this.routingControl.on('routesfound', (e) => {
+            const routes = e.routes;
+            const mainRoute = routes[0];
+            console.log(`Route visualization: Found ${routes.length} paths. Main path distance: ${mainRoute.summary.totalDistance / 1000} km`);
+        });
+
+        this.routingControl.on('routingerror', (e) => {
+            console.error("OSRM Routing Error:", e.error);
         });
 
         if (this._visible) {
