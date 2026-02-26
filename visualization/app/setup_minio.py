@@ -87,7 +87,7 @@ def save_to_dotenv(access_key, secret_key):
     except Exception as e:
         console.print(f"[bold red][!] Failed to write .env file: {e}[/bold red]")
 
-def load_minio_client() -> Minio | None:
+def load_minio_client() -> Minio:
     """
     Attempts to load MinIO credentials, prompts user if missing,
     auto-detects file vs keys, and allows 3 attempts.

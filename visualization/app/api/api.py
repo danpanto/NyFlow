@@ -4,6 +4,7 @@ import polars as pl
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 import numpy as np
+import math
 
 router = APIRouter()
 
@@ -156,18 +157,8 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
     return {"status": "ok", "data": response_data}
 
 @router.post("/route")
-async def get_optimal_route(req: QueryRequest, request: Request):
-    route_points = []
-    zone_visit = []
-    start: tuple[float, float] = (req.click_pos.lat, req.click_pos.lng)# if req.click_pos else (40.7580, -73.9855)
-    
+async def get_optimal_route(req: QueryRequest, request: Request):    
     try:
-        # Seleccionar las 20 zonas más cercanas, filtrar de esas zonas las que más interés tienen y hacer una ruta
-        _, indices = request.app.state.tree.query(np.deg2rad([start]), k=50)
-        row = request.app.state.gdf_zones.iloc[indices[0]]
-        ids_zonas_cercanas = row['locationid'].astype(int).tolist()
-
-
         startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
         endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
         
@@ -177,27 +168,79 @@ async def get_optimal_route(req: QueryRequest, request: Request):
         if req.vendors:
             lf = lf.filter(pl.col("VendorID").is_in(req.vendors))
 
-        # Esto habría que sustituirlo con el resultado del modelo
-        lf = lf.filter(pl.col("PULocationID").is_in(ids_zonas_cercanas))
-
-        # Sacar las 5 zonas de interés
+        # Df con la reputación de las zonas
         top_zone_df = (
             lf.group_by("PULocationID")
             .agg(pl.col("count").sum().alias("total_trips"))
             .sort("total_trips", descending=True)
-            .head(5)
             .collect()
         )
-        
-        top_zone_ids = [str(z_id) for z_id in top_zone_df["PULocationID"].to_list()]
-        gdf_busquedas = request.app.state.gdf_zones[request.app.state.gdf_zones["locationid"].isin(top_zone_ids)]
-        for idx, row in gdf_busquedas.iterrows():
-            zone_visit.append((row.geometry.centroid.y, row.geometry.centroid.x))
 
-        if not zone_visit:
-            zone_visit = [(40.7128, -74.0060)]
+        # Diccionario de reputación para búsquedas rápidas O(1)
+        reputation_map = dict(zip(
+            top_zone_df["PULocationID"].to_list(), 
+            top_zone_df["total_trips"].to_list()
+        ))
 
-        route_points = [start] + zone_visit
+        # Aplicar variante de Greedy Lookahead
+        MAX_STOPS: int = 5
+        MAX_DISTANCE: float = 15.0
+        EPS: float = 1e-4
+        start: tuple[float, float] = (req.click_pos.lat, req.click_pos.lng) if req.click_pos else (40.7580, -73.9855)
+        route_points: list[tuple[float, float]] = [start]
+        visited_zones: set[int] = set()
+        total_distance: float = 0.0
+        current_coords: tuple[float, float] = start
+
+        while len(route_points) <= MAX_STOPS and total_distance < MAX_DISTANCE:
+            # Extraer puntos cercanos al actual
+            distances, indexes = request.app.state.tree.query(np.deg2rad([current_coords]), k=20)
+            candidate_zones_info = request.app.state.gdf_zones.iloc[indexes[0]]
+
+            best_score: float = -1
+            best_zone = None
+            best_zone_coords: tuple[float, float] | None = None
+            distance_to_best_zone = 0
+            i_cand = 0
+            for _, row in candidate_zones_info.iterrows():
+                z: int = row["locationid"]
+                c: tuple[float, float] = (row.geometry.centroid.y, row.geometry.centroid.x)
+                d: float = distances[0][i_cand]
+                i_cand += 1
+
+                if z in visited_zones:
+                    continue
+
+                # Puntuación basada en reputación propia + potencial de vecinos (Lookahead simplificado)
+                distances2, indexes2 = request.app.state.tree.query(np.deg2rad([c]), k=3)
+                neighbor_zones_ids = request.app.state.gdf_zones.iloc[indexes2[0]]['locationid'].astype(int).tolist()
+                
+                neighbor_potential = 0.0
+                for idx, n_id in enumerate(neighbor_zones_ids):
+                    if n_id != z:
+                        dist_n = distances2[0][idx]
+                        neighbor_potential += reputation_map.get(n_id, 0.0) / (dist_n + EPS)
+
+                own_reputation = reputation_map.get(z, 0.0)
+                # Penalización lineal sobre la distancia en radianes para no aplastar zonas populares lejanas
+                score = (.8 * own_reputation + 0.2 * neighbor_potential) / (d + EPS)
+
+                if score > best_score:
+                    best_score = score
+                    best_zone = z
+                    best_zone_coords = c
+                    distance_to_best_zone = d
+
+            if best_zone is None or best_zone_coords is None:
+                break  # No hay más candidatos disponibles
+
+            route_points.append(best_zone_coords)
+            visited_zones.add(best_zone)
+            total_distance += distance_to_best_zone
+            current_coords = best_zone_coords
+
+        if len(route_points)<2:
+            route_points.append((40.7128, -74.0060))
             
     except Exception as e:
         print(f"Error calculating dynamic destination: {e}")
@@ -206,4 +249,4 @@ async def get_optimal_route(req: QueryRequest, request: Request):
                 (40.7128, -74.0060)
         ]           
         
-    return {"status": "ok", "data": route_points, "zonas": ids_zonas_cercanas}
+    return {"status": "ok", "data": route_points}
