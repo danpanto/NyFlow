@@ -16,7 +16,8 @@ class MinioSparkClient:
         self._Conf          (JavaObject):           Haddop's configuration in for the connection
     """
     
-    def __init__(self, endpoint: str, access_key: str, secret_key: str, root_path: str = ""):
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, root_path: str = "",
+        memory: int = 2, heapsize: int = 2, num_part: int = 25):
         
         self._root_path: str = "s3a://"
         self._root_path += f"{root_path.strip("/")}/"
@@ -32,12 +33,20 @@ class MinioSparkClient:
             .config("spark.hadoop.fs.s3a.vectored.active", "false") \
             .config("spark.sql.parquet.enableVectorizedReader", "false") \
             .config("spark.hadoop.parquet.hadoop.vectored.io.enabled", "false") \
-            .config("spark.hadoop.fs.s3a.connection.timeout", "60000") \
-            .config("spark.hadoop.fs.s3a.connection.establish.timeout", "60000") \
+            .config("spark.hadoop.fs.s3a.connection.timeout", "600000") \
+            .config("spark.hadoop.fs.s3a.connection.establish.timeout", "600000") \
+            .config("spark.hadoop.fs.s3a.socket.timeout", "600000") \
+            .config("spark.hadoop.fs.s3a.paging.maximum", "1000") \
             .config("spark.hadoop.fs.s3a.threads.keepalivetime", "60") \
             .config("spark.hadoop.fs.s3a.connection.maximum", "100") \
-            .config("spark.driver.memory", "2g") \
-            .config("spark.executor.memory", "2g")
+            .config("spark.driver.memory", f"{memory}g") \
+            .config("spark.executor.memory", f"{memory}g") \
+            .config("spark.memory.offHeap.enabled", "true") \
+            .config("spark.memory.offHeap.size", f"{heapsize}g") \
+            .config("spark.sql.shuffle.partitions", f"{num_part}") \
+            .config("spark.hadoop.fs.s3a.fast.upload", "true") \
+            .config("spark.hadoop.fs.s3a.multipart.size", "128M") \
+            # .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
 
 
     def __check_session(self):
