@@ -250,3 +250,26 @@ async def get_optimal_route(req: QueryRequest, request: Request):
         ]           
         
     return {"status": "ok", "data": route_points}
+
+
+@router.post("/restaurant-ratings")
+async def get_restaurant_ratings(req: QueryRequest, request: Request):               
+    return {"status": "ok", "data": request.app.state.gdf_restaurants.groupby("locationid")["SCORE"].mean().to_dict()}
+
+@router.post("/restaurant-points")
+async def get_restaurant_points(request: Request):
+    try:
+        gdf = request.app.state.gdf_restaurants
+        import math
+        data = []
+        for x, y, name, score in zip(gdf.geometry.centroid.x, gdf.geometry.centroid.y, gdf['DBA'], gdf['SCORE']):
+            data.append({
+                "name": name,
+                "score": float(score) if not math.isnan(score) else None,
+                "lat": float(y),
+                "lng": float(x)
+            })
+        return {"status": "ok", "data": data}
+    except Exception as e:
+        print(f"Error serving restaurant points: {e}")
+        return {"status": "error"}

@@ -19,6 +19,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 REQUIRED_FILES = {
     "taxi_zones.geojson": "cityenjoyer/taxi_zones.geojson",
     "aggregation.parquet": "cityenjoyer/visualization_aggregated.parquet",
+    "restaurant_info.geojson": "cityenjoyer/restaurant_info.geojson"
 }
 
 def load_and_validate_file(file_path: Path):
@@ -84,8 +85,11 @@ async def lifespan(app: FastAPI):
     app.state.gdf_zones = gpd.GeoDataFrame.from_features(app.state.files["taxi_zones.geojson"]["features"])
     app.state.gdf_zones.set_crs(epsg=4326, inplace=True)
 
-    #Schema({'pickup_datetime': Datetime(time_unit='us', time_zone=None), 'VendorID': String, 'PULocationID': Int16, 'count': UInt32, 'trip_distance': Float64, 'fare_amount': Float64, 'tip_amount': Float64, 'duration': Float64, 'tolls_amount': Float64, 'total_amount': Float64})
+    app.state.gdf_restaurants = gpd.GeoDataFrame.from_features(app.state.files["restaurant_info.geojson"]["features"])
+    app.state.gdf_restaurants.set_crs(epsg=4326, inplace=True)
+    app.state.gdf_restaurants = gpd.sjoin(app.state.gdf_restaurants, app.state.gdf_zones, how="left", predicate="within")
 
+    #Schema({'pickup_datetime': Datetime(time_unit='us', time_zone=None), 'VendorID': String, 'PULocationID': Int16, 'count': UInt32, 'trip_distance': Float64, 'fare_amount': Float64, 'tip_amount': Float64, 'duration': Float64, 'tolls_amount': Float64, 'total_amount': Float64})
 
     # 4. Extract IDs and validate specific GeoJSON business logic
     try:
