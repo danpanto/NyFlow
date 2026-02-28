@@ -5,6 +5,7 @@ import { ZoneBackend } from "./ZoneBackend.js";
 import { NeighbourhoodLayer } from "./NeighbourhoodLayer.js";
 import { DataQueryLayer } from "./DataQueryLayer.js";
 import { RouteLayer } from "./RouteLayer.js";
+import { RestaurantRatingsLayer } from "./RestaurantLayer.js";
 import { queryService } from "./services/QueryService.js";
 import { SUPPORTED_VARIABLES } from "./queryVariables.js";
 
@@ -41,6 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const routeLayer = new RouteLayer(mapManager, queryLayers["total_trips"]);
     layerSwapperData[routeLayer.name] = routeLayer;
+
+    const restaurantRatingsLayer = new RestaurantRatingsLayer(mapManager, sharedBackend);
+    layerSwapperData["restaurant_ratings"] = restaurantRatingsLayer;
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 

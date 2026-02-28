@@ -1,12 +1,12 @@
-const compactNumber = new Intl.NumberFormat('en-US', { 
-    notation: "compact", 
+const compactNumber = new Intl.NumberFormat('en-US', {
+    notation: "compact",
     maximumFractionDigits: 1 // Turns 15400 into 15.4K
 }).format;
 
-const compactCurrency = new Intl.NumberFormat('en-US', { 
-    style: 'currency', 
-    currency: 'USD', 
-    notation: "compact", 
+const compactCurrency = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: "compact",
     maximumFractionDigits: 1 // Turns 1500000 into $1.5M
 }).format;
 
@@ -91,7 +91,14 @@ export const VARIABLE_CONFIG = {
         description: "The average revenue generated per mile.",
         formatter: standardDecimal,
         units: "$/mi"
+    },
+    restaurant_ratings: {
+        longName: "Restaurant Ratings",
+        shortName: "Restaurant Rating",
+        description: "The average rating of restaurants in this zone.",
+        formatter: standardDecimal,
+        units: "Pts"
     }
 };
 
-export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG);
+export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v => v !== 'restaurant_ratings');
