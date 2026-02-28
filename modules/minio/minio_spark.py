@@ -44,6 +44,10 @@ class MinioSparkClient:
             .config("spark.memory.offHeap.enabled", "true") \
             .config("spark.memory.offHeap.size", f"{heapsize}g") \
             .config("spark.sql.shuffle.partitions", f"{num_part}") \
+            .config("spark.memory.fraction", "0.8") \
+            .config("spark.storage.memoryFraction", "0.1") \
+            .config("spark.shuffle.compress", "true") \
+            .config("spark.shuffle.spill.compress", "true") \
             .config("spark.hadoop.fs.s3a.fast.upload", "true") \
             .config("spark.hadoop.fs.s3a.multipart.size", "128M") \
             # .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
