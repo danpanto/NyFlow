@@ -10,14 +10,14 @@ Este documento describe el esquema y la lógica de los tres conjuntos de datos p
 | `VendorID` | Int8 | Código del proveedor de tecnología TPEP. |
 | `pickup_datetime` | DateTime | Fecha y hora exacta en que se activó el taxímetro. |
 | `dropoff_datetime` | DateTime | Fecha y hora exacta en que se desactivó el taxímetro. |
-| `trip_distance` | Float32 | Distancia del viaje transcurrida en millas reportada por el taxímetro. |
+| `trip_distance` | Int32 | Distancia del viaje transcurrida reportada por el taxímetro (en metros). |
 | `PULocationID` | Int16 | ID de la Zona de Taxi TLC donde comenzó el viaje. |
 | `DOLocationID` | Int16 | ID de la Zona de Taxi TLC donde terminó el viaje. |
 | `payment_type` | Int8 | Indica cómo pagó el pasajero. |
-| `fare_amount` | Int64 | La tarifa de tiempo y distancia calculada por el medidor (en centavos). |
-| `tip_amount` | Int64 | Cantidad pagada de propina (solo tarjetas de crédito, y en centavos). |
-| `tolls_amount` | Int64 | Importe total de todos los peajes pagados (en centavos). |
-| `total_amount` | Int64 | Suma total cobrada (en centavos). No incluye propinas en efectivo. |
+| `fare_amount` | Int16 | La tarifa de tiempo y distancia calculada por el medidor (en centavos). |
+| `tip_amount` | Int16 | Cantidad pagada de propina (solo tarjetas de crédito, y en centavos). |
+| `tolls_amount` | Int16 | Importe total de todos los peajes pagados (en centavos). |
+| `total_amount` | Int16 | Suma total cobrada (en centavos). No incluye propinas en efectivo. |
 
 ## Notas Técnicas y Diccionarios
 
