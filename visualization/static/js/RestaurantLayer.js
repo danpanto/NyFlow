@@ -6,7 +6,6 @@ export class RestaurantRatingsLayer extends DataQueryLayer {
         // Pass a dummy variable name for config purposes if needed, or register 'restaurant_ratings' in queryVariables.js
         super(mapManager, backend, "restaurant_ratings");
         this.pointsLayerGroup = L.markerClusterGroup({
-            disableClusteringAtZoom: 16,
             chunkedLoading: true,
             maxClusterRadius: (zoom) => {
                 if (zoom <= 13) return 80;
