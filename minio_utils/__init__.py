@@ -1,1 +1,1 @@
-from minio_spark import MinioSparkClient
+from .minio_spark import MinioSparkClient
