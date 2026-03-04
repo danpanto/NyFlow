@@ -261,8 +261,16 @@ async def get_restaurant_points(request: Request):
     try:
         gdf = request.app.state.gdf_restaurants
         import math
+        
+        # Eliminar coordenadas incorrectas
+        gdf_valid = gdf[(gdf.geometry.centroid.x != 0.0) | (gdf.geometry.centroid.y != 0.0)]
+        
+        # Eliminar duplicados históricos
+        gdf_valid = gdf_valid.assign(x=gdf_valid.geometry.centroid.x, y=gdf_valid.geometry.centroid.y)
+        deduped = gdf_valid.groupby(['x', 'y', 'DBA'], dropna=False)['SCORE'].mean().reset_index()
+
         data = []
-        for x, y, name, score in zip(gdf.geometry.centroid.x, gdf.geometry.centroid.y, gdf['DBA'], gdf['SCORE']):
+        for x, y, name, score in zip(deduped['x'], deduped['y'], deduped['DBA'], deduped['SCORE']):
             data.append({
                 "name": name,
                 "score": float(score) if not math.isnan(score) else None,
