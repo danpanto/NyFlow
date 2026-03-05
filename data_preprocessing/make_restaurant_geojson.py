@@ -4,7 +4,8 @@ import pandas as pd
 import geopandas as gpd
 
 path = Path.cwd()
-if not Path(path, "data").exists(): path = path.parent
+if not Path(path, "data").exists(): exit(1)
+# descargar datos desde https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j/about_data
 df = pd.read_csv(path / "data" / "restaurant_data.csv")
 new_df = df[["DBA", "SCORE", "Latitude", "Longitude"]]
 new_df["Latitude"] = new_df.Latitude.str.replace(",", ".").astype(float)
