@@ -281,3 +281,36 @@ async def get_restaurant_points(request: Request):
     except Exception as e:
         print(f"Error serving restaurant points: {e}")
         return {"status": "error"}
+
+
+@router.post("/asking-rent")
+async def get_asking_rent(req: QueryRequest, request: Request):
+    try:
+        startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
+        endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
+    except ValueError:
+        return {"status": "invalid", "msg": "Invalid date format."}
+        
+    lf = request.app.state.rent
+
+    # Filtrar por fecha
+    lf = lf.filter(pl.col("Date").is_between(startDate, endDate))
+    
+    base_ids = request.app.state.ids.lazy() if hasattr(request.app.state.ids, 'lazy') else request.app.state.ids
+
+    lf_rent = lf.select(["LocationID", "AskingRent"]).rename({"AskingRent": "asking_rent"})
+    
+    # Aseguramos que todas las ids tengan datos
+    df_result = (
+        base_ids
+        .join(lf_rent, left_on="PULocationID", right_on="LocationID", how="left")
+        .fill_null(0)
+        .collect()
+    )
+
+    response_data = dict(zip(
+        df_result["PULocationID"].to_list(), 
+        df_result["asking_rent"].to_list()
+    ))
+
+    return {"status": "ok", "data": response_data}

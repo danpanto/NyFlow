@@ -98,7 +98,16 @@ export const VARIABLE_CONFIG = {
         description: "The average rating of restaurants in this zone.",
         formatter: standardDecimal,
         units: "Pts"
+    },
+    asking_rent: {
+        longName: "Asking Rent",
+        shortName: "Rent",
+        description: "The average asking rent in this zone.",
+        formatter: compactCurrency,
+        units: "USD"
     }
 };
 
-export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v => v !== 'restaurant_ratings');
+export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v =>
+    v !== 'restaurant_ratings' && v !== 'asking_rent'
+);

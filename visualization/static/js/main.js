@@ -6,6 +6,7 @@ import { NeighbourhoodLayer } from "./NeighbourhoodLayer.js";
 import { DataQueryLayer } from "./DataQueryLayer.js";
 import { RouteLayer } from "./RouteLayer.js";
 import { RestaurantRatingsLayer } from "./RestaurantLayer.js";
+import { AskingRentLayer } from "./AskingRentLayer.js";
 import { queryService } from "./services/QueryService.js";
 import { SUPPORTED_VARIABLES } from "./queryVariables.js";
 
@@ -45,6 +46,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const restaurantRatingsLayer = new RestaurantRatingsLayer(mapManager, sharedBackend);
     layerSwapperData["restaurant_ratings"] = restaurantRatingsLayer;
+
+    const askingRentLayer = new AskingRentLayer(mapManager, sharedBackend);
+    layerSwapperData["asking_rent"] = askingRentLayer;
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 
