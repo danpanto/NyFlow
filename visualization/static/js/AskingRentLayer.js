@@ -2,6 +2,7 @@ import { DataQueryLayer } from "./DataQueryLayer.js";
 import { filterService } from "./services/FilterService.js";
 import { VARIABLE_CONFIG } from "./queryVariables.js";
 import "./components/AskingRentControlPanel.js";
+import { LRUCache } from "./LRUCache.js";
 
 export class AskingRentLayer extends DataQueryLayer {
     constructor(mapManager, backend) {
@@ -9,6 +10,7 @@ export class AskingRentLayer extends DataQueryLayer {
 
         // Remove old generic control panel overriding it
         this.controlPanel = document.createElement("asking-rent-control-panel");
+        this.cache = new LRUCache(200);
     }
 
     async bind() {
@@ -45,25 +47,38 @@ export class AskingRentLayer extends DataQueryLayer {
                 return dt.toISOString().split('.')[0];
             };
 
-            const response = await fetch('/api/asking-rent', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    variables: ["asking_rent"],
-                    vendors: filterService.vendors ? Array.from(filterService.vendors) : [],
-                    date: { min: fmt(ds.min), max: fmt(ds.max) },
-                    zones: filterService.zones ? Array.from(filterService.zones) : []
-                })
-            });
-            const result = await response.json();
+            const payload = {
+                variables: ["asking_rent"],
+                vendors: filterService.vendors ? Array.from(filterService.vendors) : [],
+                date: { min: fmt(ds.min), max: fmt(ds.max) },
+                zones: filterService.zones ? Array.from(filterService.zones) : []
+            };
 
-            if (result.status === "ok") {
-                this.data = result.data;
-                this.mapController.update({ query: this.data });
-                const { min, max, absoluteMax } = this.mapController.dataBounds;
-                this.legend.update(this.gradient, min, max, absoluteMax);
-                this.onSelectedZone(filterService.lastZone);
+            const cacheKey = JSON.stringify(payload);
+            let cachedData = this.cache.get(cacheKey);
+
+            if (!cachedData) {
+                const response = await fetch('/api/asking-rent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.status === "ok") {
+                    cachedData = result.data;
+                    this.cache.set(cacheKey, cachedData);
+                } else {
+                    return;
+                }
             }
+            
+            this.data = cachedData;
+            this.mapController.update({ query: this.data });
+            const { min, max, absoluteMax } = this.mapController.dataBounds;
+            this.legend.update(this.gradient, min, max, absoluteMax);
+            this.onSelectedZone(filterService.lastZone);
+
         } catch (e) {
             console.error("Error loading asking rent data", e);
         }
