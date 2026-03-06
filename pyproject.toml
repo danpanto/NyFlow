@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.14.3",
+    "clearml>=2.1.3",
     "dash>=3.4.0",
     "duckdb>=1.4.3",
     "fastapi>=0.128.0",
@@ -22,9 +23,11 @@ dependencies = [
     "pyspark>=4.1.1",
     "python-dotenv>=1.2.1",
     "rich>=14.3.1",
+    "s3fs>=2026.2.0",
     "scikit-learn>=1.8.0",
     "textual>=7.4.0",
     "torch>=2.10.0",
+    "tqdm>=4.67.3",
     "uvicorn>=0.40.0",
 ]
 
