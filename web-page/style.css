@@ -1,0 +1,61 @@
+:root {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --primary-color: #0d2b5e; /* Azul oscuro corporativo */
+    --secondary-color: #15438c;
+    --nav-bg: #f8f9fa;
+    --card-bg: #f4f6f9;
+    --border-color: #dddddd;
+}
+
+[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --primary-color: #4a90e2; 
+    --secondary-color: #2c3e50;
+    --nav-bg: #1a1a1a;
+    --card-bg: #1e1e1e;
+    --border-color: #333333;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
+
+/* Navegación */
+nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background-color: var(--nav-bg); border-bottom: 1px solid var(--border-color); }
+nav .logo { font-size: 24px; font-weight: bold; color: var(--primary-color); text-decoration: none; }
+nav ul { list-style: none; display: flex; gap: 20px; }
+nav ul li a { text-decoration: none; color: var(--text-color); font-weight: 500; transition: color 0.3s; }
+nav ul li a:hover { color: var(--primary-color); }
+
+#theme-toggle { background: var(--primary-color); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+/* Contenedores */
+.container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+.hero { text-align: center; padding: 60px 20px; background-color: var(--card-bg); border-radius: 10px; margin-bottom: 40px; }
+.hero h1 { font-size: 40px; color: var(--primary-color); margin-bottom: 10px; }
+.hero p { font-size: 18px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
+.card { background-color: var(--card-bg); padding: 30px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; }
+.card h3 { color: var(--primary-color); margin-bottom: 15px; }
+
+footer { text-align: center; padding: 20px; background-color: var(--nav-bg); margin-top: 40px; border-top: 1px solid var(--border-color); }
+
+/* Contenedor del Iframe del Mapa */
+.iframe-container {
+    width: 100%;
+    height: 75vh;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    background-color: var(--card-bg);
+}
+
+.iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
