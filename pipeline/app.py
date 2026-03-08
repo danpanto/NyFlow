@@ -293,7 +293,7 @@ class Pipeline(App):
 
             for f in self.selected_outlier_files:  #type:ignore
                 try:
-                    remove_outliers(f, self.notify_and_log)
+                    remove_outliers(f)
                 except Exception as outlier_exc:
                     self.notify_and_log(
                         message=f"Error while removing outliers from {f}",

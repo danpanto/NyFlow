@@ -144,11 +144,22 @@ def merge_lazy_frames(method: str, files: list[Path], remove_files: bool = False
     return ret_paths
 
 
-def remove_outliers(
-    filepath,
-    messenger,
-    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"],
-    group_col: str = "PULocationID",
-    k = 3.0
-):
-    messenger(f"Removing outliers from file: {filepath}")
+def remove_outliers(filepath: Path):
+    parts = filepath.relative_to(Path.cwd()).parts
+    out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
+    out_path.mkdir(exist_ok=True, parents=True)
+    
+    lf = pl.scan_parquet(filepath)
+    config = {
+        "fare_amount":  (0, 10000),
+        "tip_amount":   (0, 10000),
+        "tolls_amount": (0, 5000),
+        "total_amount": (0, 30000)
+    }
+
+    lf_final = lf.with_columns([
+        pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
+        *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
+    ])
+
+    lf_final.sink_parquet(Path(out_path, parts[-1]))
