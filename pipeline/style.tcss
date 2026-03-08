@@ -54,7 +54,7 @@ SelectionList:focus {
     height: 25;
 }
 
-#date-tree {
+#selection-tree {
     width: 1fr;
     height: 100%;
 }

@@ -1,5 +1,6 @@
+from rich.text import Text
 from textual import events
-from textual.widget import Widget, Text
+from textual.widget import Widget
 from textual.widgets import Log
 from textual.widgets import Tabs as TxtTabs
 from textual.reactive import reactive
