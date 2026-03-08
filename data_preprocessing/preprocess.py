@@ -50,7 +50,7 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
     return lf.select(UNIFIED_SCHEMA)
 
 
-def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | None:
+def merge_lazy_frames(method: str, files: list[Path], remove_files: bool = False) -> list[Path] | None:
     """
     Merge multiple data scattered through various local files into one (or more, depending on criteria) file
 
@@ -65,8 +65,6 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
     data_path = Path.cwd() / "data"
     merge_path = data_path / "merged"
     merge_path.mkdir(exist_ok=True)
-
-    files: list[Path] = [f for f in data_path.rglob("*.parquet") if f.parent != data_path]
 
     if not files:
         return None
@@ -146,40 +144,22 @@ def merge_lazy_frames(method: str, remove_files: bool = False) -> list[Path] | N
     return ret_paths
 
 
-def remove_outliers(
-    filepath,
-    messenger,
-    outliers_cols: list = ["trip_distance", "fare_amount", "tip_amount", "tolls_amount", "total_amount"],
-    group_col: str = "PULocationID",
-    k = 3.0
-):
+def remove_outliers(filepath: Path):
+    parts = filepath.relative_to(Path.cwd()).parts
+    out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
+    out_path.mkdir(exist_ok=True, parents=True)
+    
     lf = pl.scan_parquet(filepath)
+    config = {
+        "fare_amount":  (0, 10000),
+        "tip_amount":   (0, 10000),
+        "tolls_amount": (0, 5000),
+        "total_amount": (0, 30000)
+    }
 
-    transformation_exprs = []
+    lf_final = lf.with_columns([
+        pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
+        *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
+    ])
 
-    for col in outliers_cols:
-        q1 = pl.col(col).quantile(0.25).over(group_col)
-        q3 = pl.col(col).quantile(0.75).over(group_col)
-        med = pl.col(col).median().over(group_col)
-
-        iqr = q3 - q1
-
-        expr = (
-            pl.when(
-                (pl.col(col) < (q1 - k * iqr)) |
-                (pl.col(col) > (q3 + k * iqr))
-            )
-            .then(med)
-            .otherwise(pl.col(col))
-            .alias(col)
-        )
-
-        transformation_exprs.append(expr)
-
-    messenger("Transforming outliers...")
-
-    lf_final = lf.with_columns(transformation_exprs)
-
-    messenger("Saving to disk...")
-
-    lf_final.sink_parquet(Path(filepath.parent, f"{filepath.stem}_cleaned.parquet"))
+    lf_final.sink_parquet(Path(out_path, parts[-1]))
