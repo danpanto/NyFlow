@@ -1,8 +1,8 @@
 class ThemeService extends EventTarget {
     constructor() {
         super();
-        this._theme = localStorage.getItem('app-theme') || 
-                      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        this._theme = localStorage.getItem('app-theme') ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
         this._updateDOM();
     }
@@ -13,14 +13,14 @@ class ThemeService extends EventTarget {
 
     set theme(value) {
         if (value !== 'light' && value !== 'dark') return; // Invalid theme
-        if(this._theme === value) return; // Theme is already set
+        if (this._theme === value) return; // Theme is already set
 
         this._theme = value;
         localStorage.setItem('app-theme', value);
         this._updateDOM();
 
-        this.dispatchEvent(new CustomEvent('theme-changed', { 
-            detail: { theme: this._theme } 
+        this.dispatchEvent(new CustomEvent('theme-changed', {
+            detail: { theme: this._theme }
         }));
     }
 
@@ -28,7 +28,7 @@ class ThemeService extends EventTarget {
         const internalWrapper = (e) => callback(e.detail.theme);
         this.addEventListener('theme-changed', internalWrapper);
 
-        if(doFirstCall) callback(this._theme);
+        if (doFirstCall) callback(this._theme);
 
         // Callback to unsubcribe
         return () => this.removeEventListener('theme-changed', internalWrapper);

@@ -3,7 +3,7 @@ import { themeService } from "./services/ThemeService.js";
 export class MapManager {
     constructor(domElement, mapConfig = {}) {
 
-    const defaults = {
+        const defaults = {
             zoomControl: false,
             lat: 40.70,
             lon: -73.95,
@@ -25,10 +25,10 @@ export class MapManager {
             minZoom: config.minZoom,
             maxZoom: config.maxZoom,
             maxBounds: [
-                [config.minLat, config.minLng], 
+                [config.minLat, config.minLng],
                 [config.maxLat, config.maxLng]
             ],
-            maxBoundsViscosity: 1.0 
+            maxBoundsViscosity: 1.0
         };
 
         this.map = L.map(domElement, leafletOptions);
@@ -59,7 +59,7 @@ export class MapManager {
             selectedTheme = "light";
         }
 
-        if(this._theme == selectedTheme) return;
+        if (this._theme == selectedTheme) return;
         this._theme = selectedTheme;
 
         // Change tile provider
@@ -74,7 +74,7 @@ export class MapManager {
 
     _onMapClick(e) {
         this.layers.forEach(layer => {
-            layer.update({ 
+            layer.update({
                 click: {
                     lat: e.latlng["lat"],
                     lng: e.latlng["lng"],
@@ -96,19 +96,19 @@ export class MapManager {
 
     toggleLayer(id, visibility = null) {
         const layer = this.layers.get(id);
-        if(!layer) {
+        if (!layer) {
             console.warn(`Layer ${id} doesn't exists. Can't toggle visibility.`);
             return;
         }
 
         const visible = (visibility !== null) ? visibility : !layer.visible;
-        layer.update({ visible : visible });
+        layer.update({ visible: visible });
     }
 
     removeLayer(id) {
         const layer = this.layers.get(id);
         if (layer) {
-            layer.unmount(); 
+            layer.unmount();
             this.layers.delete(id);
         } else {
             console.warn(`Layer ${id} doesn't exists. Can't be removed.`);
