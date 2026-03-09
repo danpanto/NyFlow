@@ -76,3 +76,12 @@ def get_parquet_files(local_files: bool = True) -> dict[str, dict]:
                 add_file(res, Path(obj.object_name).parts, f"pd2/{obj.object_name}")  #type:ignore
 
     return res
+
+
+def remove_files(files, data_path):
+    for f in files:
+        f.unlink()
+
+    for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
+        if p.is_dir() and not any(p.iterdir()):
+            p.rmdir()

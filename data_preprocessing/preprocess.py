@@ -50,13 +50,13 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
     return lf.select(UNIFIED_SCHEMA)
 
 
-def merge_lazy_frames(method: str, files: list[Path], remove_files: bool = False) -> list[Path] | None:
+def merge_lazy_frames(method: str, files: set[Path]) -> list[Path] | None:
     """
     Merge multiple data scattered through various local files into one (or more, depending on criteria) file
 
     Args:
         method          (str):                      How to merge data (by year, month, ...)
-        remove_files    (bool, default = False):    Whether to remove original files after merge
+        files           (set[Path]):                List of files to merge
 
     Returns:
         out             (list[Path] | None):        List of the new local files (or None if error)
@@ -130,36 +130,34 @@ def merge_lazy_frames(method: str, files: list[Path], remove_files: bool = False
             pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
             ret_paths.append(file_path)
 
-    else: return None
-
-    # Handle original files' deletion
-    if remove_files:
-        for f in files:
-            f.unlink()
-
-        for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
-            if p.is_dir() and not any(p.iterdir()):
-                p.rmdir()
+    else:
+        return None
 
     return ret_paths
 
 
-def remove_outliers(filepath: Path):
-    parts = filepath.relative_to(Path.cwd()).parts
-    out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
-    out_path.mkdir(exist_ok=True, parents=True)
-    
-    lf = pl.scan_parquet(filepath)
-    config = {
-        "fare_amount":  (0, 10000),
-        "tip_amount":   (0, 10000),
-        "tolls_amount": (0, 5000),
-        "total_amount": (0, 30000)
-    }
+def remove_outliers(filepath: Path, local_files: bool = True):
+    if local_files:
+        parts = filepath.relative_to(Path.cwd()).parts
+        out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
+        out_path.mkdir(exist_ok=True, parents=True)
+        
+        lf = pl.scan_parquet(filepath)
+        config = {
+            "fare_amount":  (0, 10000),
+            "tip_amount":   (0, 10000),
+            "tolls_amount": (0, 5000),
+            "total_amount": (0, 30000)
+        }
 
-    lf_final = lf.with_columns([
-        pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
-        *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
-    ])
+        lf_final = lf.with_columns([
+            pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
+            *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
+        ])
 
-    lf_final.sink_parquet(Path(out_path, parts[-1]))
+        clean_path = Path(out_path, parts[-1])
+        lf_final.sink_parquet(clean_path)
+        return clean_path
+
+    else:
+        return None
