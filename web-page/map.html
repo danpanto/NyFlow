@@ -19,15 +19,40 @@
 
     <div class="container" style="max-width: 1400px;">
         <h2 style="margin-bottom: 20px;">Plataforma de Visualización de Nueva York</h2>
-        <p style="margin-bottom: 30px;">Interactúa con el mapa para ver métricas de demanda o predicciones futuras. (Usa el botón de la esquina superior derecha del mapa para su propio modo oscuro).</p>
+        <p style="margin-bottom: 30px;">Interactúa con el mapa para ver métricas de demanda o predicciones futuras.</p>
         
-        <div class="iframe-container">
+        <div class="iframe-container" id="mapa">
             <iframe src="http://127.0.0.1:8000" title="Mapa Interactivo NyFlow"></iframe>
         </div>
     </div>
 
-    <footer>
-        <p>&copy; 2026 NyFlow. Todos los derechos reservados.</p>
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3 style="font-size: 24px;">NyFlow</h3>
+                <p>Optimizando las rutas de transporte en Nueva York con inteligencia artificial.</p>
+            </div>
+            
+            <div class="footer-col">
+                <h3>Enlaces Rápidos</h3>
+                <ul>
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="map.html">Mapa Interactivo</a></li>
+                    <li><a href="about.html">Sobre Nosotros</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-col">
+                <h3>Contacto</h3>
+                <p>📧 c_enjoyers@outlook.com</p>
+                <p>📍 Madrid, España</p>
+                <p>📱 +34 711 11 11 11</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 NyFlow. Todos los derechos reservados.</p>
+        </div>
     </footer>
 
     <script src="script.js"></script>

@@ -56,4 +56,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.themeService = themeService;
     window.selectLayer = (name) => mapManager.toggleLayer(name, true);
 
+    function isIframe() {
+        try {
+            return window.self !== window.top;
+        } catch (e) {
+            return true;
+        }
+    }
+
+    // Si es iframe no necesitamos el botón
+    if (isIframe()) {
+        const boton = document.querySelector('theme-btn');
+        boton.style.display = "none";
+    }else{
+        console.log("falso")
+    }
+
+    // para el iframe de la página del proyecto
+    window.addEventListener('message', function (event) {
+        let data = event.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { return; }
+        }
+
+        const { action, value } = data || {};
+
+        console.log("Message received from parent:", action, value);
+
+        if (action === 'data-theme' && value) {
+            themeService.theme = value;
+        }
+    });
+
 });

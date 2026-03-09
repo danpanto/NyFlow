@@ -22,37 +22,41 @@ export class BottomDrawer extends HTMLElement {
 
     addEventListeners() {
         const btn = this.shadowRoot.querySelector('.toggle-btn');
+        const overlay = this.shadowRoot.querySelector('.overlay');
+
+        btn.addEventListener('click', () => this.toggle());
+        overlay.addEventListener('click', () => {
+            if (this.isOpen) this.toggle(false);
+        });
+
+        // Listen for layer selection to auto-close
+        this.addEventListener('layer-selected', () => {
+            if (this.isOpen) this.toggle(false);
+        });
+
+        this.updateState();
+    }
+
+    toggle(forceState = !this.isOpen) {
+        this.isOpen = forceState;
+        this.updateState();
+    }
+
+    updateState() {
         const panel = this.shadowRoot.querySelector('.panel');
         const overlay = this.shadowRoot.querySelector('.overlay');
         const icon = this.shadowRoot.querySelector('.icon');
 
-        const togglePanel = () => {
-            this.isOpen = !this.isOpen;
-            
-            if (this.isOpen) {
-                panel.classList.remove('collapsed');
-                overlay.classList.add('visible');
-                icon.style.transform = 'rotate(0deg)'; 
-            } else {
-                panel.classList.add('collapsed');
-                overlay.classList.remove('visible');
-                icon.style.transform = 'rotate(180deg)'; 
-            }
-        };
-
-        btn.addEventListener('click', togglePanel);
-        overlay.addEventListener('click', () => {
-            if (this.isOpen) togglePanel();
-        });
+        if (!panel) return; // Not rendered yet
 
         if (this.isOpen) {
             panel.classList.remove('collapsed');
             overlay.classList.add('visible');
-            icon.style.transform = 'rotate(0deg)'; 
+            if (icon) icon.style.transform = 'rotate(0deg)';
         } else {
             panel.classList.add('collapsed');
             overlay.classList.remove('visible');
-            icon.style.transform = 'rotate(180deg)'; 
+            if (icon) icon.style.transform = 'rotate(180deg)';
         }
     }
 
@@ -176,9 +180,9 @@ export class BottomDrawer extends HTMLElement {
                     <svg class="handle-shape" preserveAspectRatio="none" viewBox="0 0 ${handleWidth} 35">
                         <path d="
                             M0,35 
-                            C${curveWidth/2},35 ${curveWidth/2},0 ${curveWidth},0 
+                            C${curveWidth / 2},35 ${curveWidth / 2},0 ${curveWidth},0 
                             L${handleWidth - curveWidth},0 
-                            C${handleWidth - curveWidth/2},0 ${handleWidth - curveWidth/2},35 ${handleWidth},35 
+                            C${handleWidth - curveWidth / 2},0 ${handleWidth - curveWidth / 2},35 ${handleWidth},35 
                             Z" />
                     </svg>
 

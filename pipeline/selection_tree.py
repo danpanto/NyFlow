@@ -1,6 +1,11 @@
-from textual.widgets import Tree
+from textual.widgets import Tree, Label
 from textual.widgets.tree import TreeNode
-from textual import events, log
+from textual.containers import Middle, Center, Horizontal, Vertical
+from textual import events
+from textual.app import ComposeResult
+from textual.screen import ModalScreen
+from pipeline.widgets import Button
+
 
 class SelectionTree(Tree):
     """
@@ -10,7 +15,7 @@ class SelectionTree(Tree):
 
     can_focus = True
 
-    def __init__(self, data: dict, selected_data: set = None, label: str = "Root",
+    def __init__(self, data: dict, selected_data: set | None = None, label: str = "Root",
                     id: str | None = None, start_expanded: bool = False
                 ):
 
@@ -31,7 +36,7 @@ class SelectionTree(Tree):
                 # It's a leaf
                 label = self._format_label(str(key), value in self.selected_data)
                 parent_node.add_leaf(label, data={"val": value, "key": key, "checked": value in self.selected_data})
-                parent_node.data["num_checked"] += value in self.selected_data
+                parent_node.data["num_checked"] += value in self.selected_data  #type:ignore
 
 
     def _format_label(self, text: str, is_selected: bool) -> str:
@@ -43,18 +48,33 @@ class SelectionTree(Tree):
         return not node.allow_expand
         
 
+    def _rebuild(self, new_data):
+        self.node_data = new_data 
+        
+        self.clear()
+        
+        self.selected_data.clear() 
+
+        self._build_tree(self.node_data, self.root)
+    
+        if self.start_expanded:
+            self.root.expand_all()
+        
+        if self.root.children:
+            self.move_cursor(self.root.children[0])
+        
+        self.refresh()
+
+
     def on_mount(self):
         self.show_root = False
         self._build_tree(self.node_data, self.root)
 
         self.root.expand_all() if self.start_expanded else self.root.collapse_all()
-        self.move_cursor(self.root.children[0])
-        self.cursor_node.toggle()
 
-
-    def on_tree_node_selected(self, event: Tree.NodeSelected):
-        """Handle the Enter key (default selection event)."""
-        self.handle_selection(event.node)
+        if len(self.root.children) > 0:
+            self.move_cursor(self.root.children[0])
+            self.cursor_node.toggle()  #type:ignore
 
 
     def handle_selection(self, node):
@@ -76,6 +96,10 @@ class SelectionTree(Tree):
             node.set_label(self._format_label(node.data["key"], node.data["checked"]))
 
 
+    def on_tree_node_selected(self, event: Tree.NodeSelected):
+        """Handle the Enter key (default selection event)."""
+        self.handle_selection(event.node)
+
 
     def get_selected_values(self) -> set:
         """Returns the 'value' portion of all selected leaf nodes."""
@@ -83,7 +107,13 @@ class SelectionTree(Tree):
 
 
     def on_key(self, event: events.Key):
-        if event.key == "up":
+        from pipeline.pl_utils import get_parquet_files
+
+        if event.key == "r":
+            self._rebuild(get_parquet_files())
+            event.stop()
+
+        elif event.key == "up":
             self.action_cursor_up()
             event.stop()
 
@@ -97,18 +127,18 @@ class SelectionTree(Tree):
                 event.stop()
 
         elif event.key == "shift+enter":
-            parent = self.cursor_node.parent if self._is_leaf(self.cursor_node) else self.cursor_node
+            parent = self.cursor_node.parent if self._is_leaf(self.cursor_node) else self.cursor_node  #type:ignore
 
-            if parent.data["num_checked"] == len(parent.children) or parent.data["num_checked"] == 0:
-                for child in parent.children: self.handle_selection(child)
+            if parent.data["num_checked"] == len(parent.children) or parent.data["num_checked"] == 0:  #type:ignore
+                for child in parent.children: self.handle_selection(child)  #type:ignore
             else:
-                for child in parent.children:
-                    if self._is_leaf(child) and not child.data["checked"]: self.handle_selection(child)
+                for child in parent.children:  #type:ignore
+                    if self._is_leaf(child) and not child.data["checked"]: self.handle_selection(child)  #type:ignore
 
             event.stop()
 
         elif event.key in ("tab", "shift+tab"):
-            new_focus = self.cursor_node.parent if self._is_leaf(self.cursor_node) else self.cursor_node
+            new_focus = self.cursor_node.parent if self._is_leaf(self.cursor_node) else self.cursor_node  #type:ignore
 
             if event.key == "shift+tab":
                 if any(child.is_expanded for child in self.root.children):
@@ -126,5 +156,74 @@ class SelectionTree(Tree):
                 if new_focus != self.cursor_node:
                     self.move_cursor(new_focus)
                 
-                new_focus.toggle()
+                new_focus.toggle()  #type:ignore
                 event.stop()
+
+
+
+class TreeSelectionModal(ModalScreen):
+
+    CSS_PATH = "style.tcss"
+    
+    def __init__(self, data: dict, selected_data: set | None = None, title_text: str = "Select Data"):
+        super().__init__()
+        self.data = data
+        self.selected_data = set(selected_data) if selected_data else set()
+        self.last_button = None
+        self.title_text = title_text
+
+
+    def confirm(self):
+        self.dismiss(self.query_one("#selection-tree").get_selected_values())  #type:ignore
+
+
+    def cancel(self):
+        self.dismiss(None)
+
+    
+    def on_key(self, event: events.Key) -> None:
+        if event.key == "escape":
+            event.stop()
+            self.cancel()
+
+        selection_tree = self.query_one("#selection-tree")
+        confirm_btn = self.query_one("#confirm-btn")
+        modal_sidebar = self.query_one("#modal-sidebar")
+
+        if event.key == "left":
+            if self.focused != selection_tree:
+                self.last_button = self.focused
+                selection_tree.focus()
+            event.stop()
+
+        elif event.key == "right":
+            if self.focused == selection_tree:
+                if self.last_button:
+                    self.last_button.focus()
+                else:
+                    confirm_btn.focus()
+            event.stop()
+
+        elif event.key == "up":
+            if self.focused != modal_sidebar.children[0]:
+                self.focus_previous()
+            event.stop()
+
+        elif event.key == "down":
+            if self.focused != modal_sidebar.children[-1]:
+                self.focus_next()
+            event.stop()
+
+
+    def compose(self) -> ComposeResult:
+        with Middle():
+            with Center():
+                with Vertical(id="modal-dialog"):
+                    yield Label(self.title_text, id="modal-title")
+
+                    with Horizontal(id="main-container"):
+                        yield SelectionTree(self.data, self.selected_data, id="selection-tree", start_expanded=False)
+
+                        with Vertical(id="modal-sidebar"):
+                            yield Button("Cancel", action=self.cancel, id="cancel-btn", classes="focuseable")
+                            yield Button("Confirm", action=self.confirm, id="confirm-btn", classes="focuseable")

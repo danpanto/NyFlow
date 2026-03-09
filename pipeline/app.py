@@ -1,48 +1,14 @@
 from pipeline.widgets import *
-from pipeline.date_picker import DatePickerModal
+from pipeline.selection_tree import TreeSelectionModal
 from textual import events, work
 from textual.app import App, ComposeResult
-from textual.screen import ModalScreen
 from textual.containers import Center, Middle, Horizontal, Vertical
 from textual.widgets import (
-    Header,
     Footer,
     ContentSwitcher,
     Tab,
-    Label,
-    SelectionList
+    Label
 )
-
-
-def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | None:
-    from bs4 import BeautifulSoup
-    import requests as rq
-
-    response = rq.get("https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page")
-    if response.status_code // 100 != 2:
-        print(f"[Error] Status code: {response.status_code}")
-        return None
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    dates = {
-        tag_div.get("id")[3:]: {
-            tag_strong.text: f"{tag_div.get("id")[3:]}-{i+1:0>2}"
-            for i, tag_strong in enumerate(tag_div.find_all("strong"))
-        }
-        for tag_div in soup.find_all("div", {"class": "faq-answers"})
-    }
-
-    vendors = list()
-    for td in soup.find_all("td"):
-        # Get available vendors
-        for link in td.find_all("a"):
-            v = link.get("title")[:-13]
-            if v not in vendors:
-                vendors.append(v)
-
-    return (dates, vendors)
-
 
 
 class Pipeline(App):
@@ -57,9 +23,14 @@ class Pipeline(App):
 
 
     def __init__(self):
+        from pipeline.pl_utils import get_years_months_vendors, get_parquet_files
+
         super().__init__()
-        self.dates, self.vendors = get_years_months_vendors()
+        self.dates, self.vendors = get_years_months_vendors()  #type:ignore
+        self.files = get_parquet_files()
         self.selected_dates = None
+        self.selected_merge_files = None
+        self.selected_outlier_files = None
 
 
     def add_log(self, message: str, status: str = "INFO"):
@@ -102,19 +73,50 @@ class Pipeline(App):
                 self.selected_dates = data
 
         self.push_screen(
-            DatePickerModal(
+            TreeSelectionModal(
                 self.dates,
-                self.selected_dates
+                self.selected_dates,  #type:ignore
+                title_text="Select Dates"
+            ),
+            handle_return
+        )
+
+
+    def open_merge_files_picker(self):
+        def handle_return(data):
+            if data is not None:
+                self.selected_merge_files = data
+
+        self.push_screen(
+            TreeSelectionModal(
+                self.files,
+                self.selected_merge_files,  #type:ignore
+                "Select files to merge"
+            ),
+            handle_return
+        )
+
+
+    def open_outlier_files_picker(self):
+        def handle_return(data):
+            if data is not None:
+                self.selected_outlier_files = data
+
+        self.push_screen(
+            TreeSelectionModal(
+                self.files,
+                self.selected_outlier_files,  #type:ignore
+                "Select files to have outliers removed"
             ),
             handle_return
         )
 
 
     def on_key(self, event: events.Key) -> None:
-        if isinstance(self.focused, SelectionList):
-            return
-
-        if event.key == "up":
+        if event.key == "escape":
+            event.stop()
+            self.exit()
+        elif event.key == "up":
             self.screen.focus_previous()
         elif event.key == "down":
             self.screen.focus_next()
@@ -144,10 +146,10 @@ class Pipeline(App):
         )
         from data_preprocessing.preprocess import transform_columns
 
-        dl_mode = self.query_one("#dl_mode_selector").value
-        transf = self.query_one("#tf_selector").is_selected
-        vendor_mode = self.query_one("#dl_selector").value
-        date_mode = self.query_one("#date_selector").value
+        dl_mode = self.query_one("#dl_mode_selector").value  #type:ignore
+        transf = self.query_one("#tf_selector").is_selected  #type:ignore
+        vendor_mode = self.query_one("#dl_selector").value  #type:ignore
+        date_mode = self.query_one("#date_selector").value  #type:ignore
 
         if date_mode == "All":
             dates = []
@@ -176,7 +178,7 @@ class Pipeline(App):
         else:
             for v_id, name in vendor_map.items():
                 widget = self.query_one(f"#{v_id}")
-                if widget.is_selected: 
+                if widget.is_selected:   #type:ignore
                     vendors.append(name)
 
         # ------------------------------------- #
@@ -238,7 +240,7 @@ class Pipeline(App):
                     message="Please wait...",
                     title="Saving data to file"
                 )
-                save_lazy_frame(lf, *date, group[1])
+                save_lazy_frame(lf, *date, group[1])  #type:ignore
                 self.notify_and_log(
                     message=f"File saved correctly! {list(group)}",
                     title="File save successful",
@@ -256,47 +258,42 @@ class Pipeline(App):
         from pathlib import Path
 
 
-        merge_type = self.query_one("#merge_selector").value
-        del_files_merge = self.query_one("#del-files-merge-checkbox").is_selected
-        outliers = self.query_one("#outlier_selector").is_selected
-        merged_files: list[Path] = []
+        merge_type = self.query_one("#merge_selector").value  #type:ignore
+        del_files_merge = self.query_one("#del-files-merge-checkbox").is_selected  #type:ignore
 
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
         self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
 
-        merge_path = Path(Path.cwd(), "data", "merged")
-
         if merge_type != "None":
+            if self.selected_merge_files == None or len(self.selected_merge_files) == 0:
+                self.notify("No files were selected.")
+                self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
+                return
+
             self.notify_and_log(
                 message="Please wait...",
                 title="Merging data"
             )
 
-            aux = merge_lazy_frames(method=merge_type, remove_files=del_files_merge)
-            if aux is not None:
-                merged_files = aux
+            merged_files = merge_lazy_frames(merge_type, self.selected_merge_files, del_files_merge)
 
             self.notify_and_log(
                 message="Data merged successfully",
                 title="Merge successful",
                 status="SUCCESS"
             )
-        elif merge_path.exists():
-            merged_files = [_ for _ in merge_path.glob("*.parquet")]
 
-        if outliers:
+        if self.selected_outlier_files is not None and len(self.selected_outlier_files) > 0:
             self.notify_and_log(
                 message="Please wait...",
                 title="Removing outliers"
             )
 
-            outlier_ok = True
-
-            for f in merged_files:
+            for f in self.selected_outlier_files:  #type:ignore
                 try:
-                    remove_outliers(f, self.notify_and_log)
+                    remove_outliers(f)
                 except Exception as outlier_exc:
                     self.notify_and_log(
                         message=f"Error while removing outliers from {f}",
@@ -306,9 +303,8 @@ class Pipeline(App):
                     self.notify_and_log(
                         message=str(outlier_exc)
                     )
-                    outlier_ok = False
-            
-            if outlier_ok:
+                    break
+            else:
                 self.notify_and_log(
                     message="Outliers removed successfully",
                     title="Removal successful",
@@ -409,20 +405,29 @@ class Pipeline(App):
 
                             with Vertical(id="merge-collapsable"):
                                 with Horizontal(classes="optbox_sub1-row"):
+                                    yield Label("Delete original files after merge")
                                     yield CheckBox(
                                         is_selected=False,
                                         id="del-files-merge-checkbox",
                                         classes="focuseable"
                                     )
-                                    yield Label("Delete original files after merge")
+
+                                with Horizontal(classes="optbox_sub1-row middle-button"):
+                                    yield Button(
+                                        "Select Files",
+                                        action=self.open_merge_files_picker,
+                                        id="merge-files-popup-button",
+                                        classes="focuseable"
+                                    )
 
                             with Horizontal(classes="optbox-row"):
-                                yield CheckBox(
-                                    is_selected=False,
-                                    id="outlier_selector",
-                                    classes="focuseable"
-                                )
                                 yield Label("Remove outliers")
+                                yield Button(
+                                    "Select Files",
+                                    action=self.open_outlier_files_picker,
+                                    id="outlier-files-popup-button",
+                                    classes="focuseable"
+                                )      
                             
                             with Vertical(classes="down-right"):
                                 yield Button("Start", action=self.run_prep_pipeline, classes="focuseable")
