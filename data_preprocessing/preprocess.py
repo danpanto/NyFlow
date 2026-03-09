@@ -136,28 +136,96 @@ def merge_lazy_frames(method: str, files: set[Path]) -> list[Path] | None:
     return ret_paths
 
 
-def remove_outliers(filepath: Path, local_files: bool = True):
-    if local_files:
-        parts = filepath.relative_to(Path.cwd()).parts
-        out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
-        out_path.mkdir(exist_ok=True, parents=True)
-        
-        lf = pl.scan_parquet(filepath)
-        config = {
-            "fare_amount":  (0, 10000),
-            "tip_amount":   (0, 10000),
-            "tolls_amount": (0, 5000),
-            "total_amount": (0, 30000)
-        }
+def remove_outliers_local(filepaths: set[Path], logger):
+    config = {
+        "fare_amount":  (0, 10000),
+        "tip_amount":   (0, 10000),
+        "tolls_amount": (0, 5000),
+        "total_amount": (0, 30000)
+    }
+    clean_paths = set()
 
-        lf_final = lf.with_columns([
-            pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
-            *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
-        ])
+    for file in filepaths:
+        try:
+            lf = pl.scan_parquet(file)
+            
+            lf_final = lf.with_columns([
+                pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
+                *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
+            ])
 
-        clean_path = Path(out_path, parts[-1])
-        lf_final.sink_parquet(clean_path)
-        return clean_path
+            parts = file.relative_to(Path.cwd()).parts
+            out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
+            out_path.mkdir(exist_ok=True, parents=True)
+            final_path = Path(out_path, parts[-1])
 
-    else:
-        return None
+            lf_final.sink_parquet(final_path)
+            clean_paths.add(final_path)
+
+        except Exception as outlier_exc:
+            logger(
+                message=f"Error while removing outliers from {file}",
+                title="Outlier Removal error",
+                status="ERROR"
+            )
+            logger(message=str(outlier_exc))
+            clean_paths.add(file)
+    
+    return clean_paths
+
+
+def remove_outliers_minio(filepaths: set[Path], logger):
+    from minio_utils import MinioSparkClient
+    from os import getenv
+    from pyspark.sql import functions as F
+    from pyspark.sql.types import IntegerType, ShortType
+
+    config = {
+        "fare_amount":  (0, 10000),
+        "tip_amount":   (0, 10000),
+        "tolls_amount": (0, 5000),
+        "total_amount": (0, 30000)
+    }
+    clean_paths = set()
+
+    client = MinioSparkClient(
+        endpoint="minio.fdi.ucm.es",
+        access_key=getenv("MINIO_ACCESS_KEY"),  #type:ignore
+        secret_key=getenv("MINIO_SECRET_KEY")  #type:ignore
+    )
+    client.connect()
+
+    for file in filepaths:
+        try:
+            df = client.read_parquet(str(file))
+            
+            df_final = df.withColumn(
+                "trip_distance",
+                F.least(
+                    F.greatest(F.col("trip_distance") * 1609.34, F.lit(0)),
+                    F.lit(200 * 1609.34)
+                ).cast(IntegerType())
+            )
+
+            for col_name, (low, high) in config.items():
+                df_final = df_final.withColumn(
+                    col_name,
+                    F.least(F.greatest(F.col(col_name), F.lit(low)), F.lit(high)).cast(ShortType())
+                )
+
+            final_path = Path(*file.parts[:-1], f"{file.stem}_clean{file.suffix}")
+
+            client.write_parquet(df_final, str(final_path))
+            clean_paths.add(final_path)
+
+        except Exception as outlier_exc:
+            logger(
+                message=f"Error while removing outliers from {file}",
+                title="Outlier Removal error",
+                status="ERROR"
+            )
+            logger(message=str(outlier_exc))
+            clean_paths.add(file)
+    
+    client.disconnect()
+    return clean_paths

@@ -58,22 +58,21 @@ def get_parquet_files(local_files: bool = True) -> dict[str, dict]:
                     add_file(res, file_path.relative_to(data_path).parts, file_path)
 
     else:
-        client = Minio(
+        objects = Minio(
             endpoint="minio.fdi.ucm.es",
             access_key=getenv("MINIO_ACCESS_KEY"),
             secret_key=getenv("MINIO_SECRET_KEY"),
             secure=True
-        )
-
-        objects = client.list_objects(
+        ).list_objects(
             bucket_name="pd2",
             prefix="cityenjoyer/",
-            recursive=False
+            recursive=True
         )
         
         for obj in objects:
-            if obj.object_name.endswith(".parquet"):  #type:ignore
-                add_file(res, Path(obj.object_name).parts, f"pd2/{obj.object_name}")  #type:ignore
+            if (obj.object_name.endswith(".parquet")  #type:ignore
+            and not obj.object_name.endswith("snappy.parquet")):  #type:ignore
+                add_file(res, Path(obj.object_name).parts, Path(f"pd2/{obj.object_name}"))  #type:ignore
 
     return res
 

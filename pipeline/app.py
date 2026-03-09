@@ -1,4 +1,6 @@
 from os import remove
+
+from numpy import meshgrid
 from pipeline.widgets import *
 from pipeline.selection_tree import TreeSelectionModal
 from textual import events, work
@@ -261,7 +263,7 @@ class Pipeline(App):
 
     @work(exclusive=True, thread=True)
     def run_prep_pipeline(self):
-        from data_preprocessing.preprocess import merge_lazy_frames, remove_outliers
+        from data_preprocessing.preprocess import merge_lazy_frames, remove_outliers_local, remove_outliers_minio
         from pipeline.pl_utils import remove_files
         from pathlib import Path
 
@@ -294,29 +296,21 @@ class Pipeline(App):
                 title="Removing outliers"
             )
 
-            for f in files:  #type:ignore
-                try:
-                    aux = remove_outliers(f)
-                    if aux is not None:
-                        res_files.add(aux)
-
-                except Exception as outlier_exc:
-                    self.notify_and_log(
-                        message=f"Error while removing outliers from {f}",
-                        title="Removal error",
-                        status="ERROR"
-                    )
-                    self.notify_and_log(
-                        message=str(outlier_exc)
-                    )
-                    res_files.add(f)
-                    break
+            if file_location == "Local":
+                aux = remove_outliers_local(filepaths=files, logger=self.notify_and_log)
             else:
-                self.notify_and_log(
-                    message="Outliers removed successfully",
-                    title="Removal successful",
-                    status="SUCCESS"
-                )
+                aux = remove_outliers_minio(filepaths=files, logger=self.notify_and_log)
+            
+            if aux is not None and len(aux) > 0:
+                res_files = aux
+
+            self.notify_and_log(
+                message="Outliers removed successfully",
+                title="Removal successful",
+                status="SUCCESS"
+            )
+
+            self.notify_and_log(f"{res_files}")
 
         if merge_type != "None":
             self.notify_and_log(
