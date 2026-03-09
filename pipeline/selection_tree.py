@@ -16,13 +16,14 @@ class SelectionTree(Tree):
     can_focus = True
 
     def __init__(self, data: dict, selected_data: set | None = None, label: str = "Root",
-                    id: str | None = None, start_expanded: bool = False
+                    id: str | None = None, start_expanded: bool = False, local_files: bool = True
                 ):
 
         super().__init__(label, id=id)
         self.node_data = data
         self.selected_data = selected_data if selected_data is not None else set()
         self.start_expanded = start_expanded
+        self.local_files = local_files
 
 
     def _build_tree(self, data: dict, parent_node: TreeNode):
@@ -110,7 +111,7 @@ class SelectionTree(Tree):
         from pipeline.pl_utils import get_parquet_files
 
         if event.key == "r":
-            self._rebuild(get_parquet_files())
+            self._rebuild(get_parquet_files(local_files=self.local_files))
             event.stop()
 
         elif event.key == "up":
@@ -165,12 +166,15 @@ class TreeSelectionModal(ModalScreen):
 
     CSS_PATH = "style.tcss"
     
-    def __init__(self, data: dict, selected_data: set | None = None, title_text: str = "Select Data"):
+    def __init__(self, data: dict, selected_data: set | None = None,
+        title_text: str = "Select Data", local_files: bool = True):
+
         super().__init__()
         self.data = data
         self.selected_data = set(selected_data) if selected_data else set()
         self.last_button = None
         self.title_text = title_text
+        self.local_files = local_files
 
 
     def confirm(self):
@@ -222,7 +226,13 @@ class TreeSelectionModal(ModalScreen):
                     yield Label(self.title_text, id="modal-title")
 
                     with Horizontal(id="main-container"):
-                        yield SelectionTree(self.data, self.selected_data, id="selection-tree", start_expanded=False)
+                        yield SelectionTree(
+                            self.data,
+                            self.selected_data,
+                            id="selection-tree",
+                            start_expanded=False,
+                            local_files=self.local_files
+                        )
 
                         with Vertical(id="modal-sidebar"):
                             yield Button("Cancel", action=self.cancel, id="cancel-btn", classes="focuseable")

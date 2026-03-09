@@ -20,7 +20,9 @@ class MinioSparkClient:
         memory: int = 2, heapsize: int = 2, num_part: int = 25):
         
         self._root_path: str = "s3a://"
-        self._root_path += f"{root_path.strip("/")}/"
+        if root_path.strip("/"):
+            self._root_path += f"{root_path.strip('/')}/"
+        
         self._connected: bool = False
         self._spark_builder = SparkSession.builder \
             .appName("MinioSparkClient") \
