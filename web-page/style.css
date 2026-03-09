@@ -1,7 +1,7 @@
 :root {
     --bg-color: #ffffff;
     --text-color: #333333;
-    --primary-color: #0d2b5e; /* Azul oscuro corporativo */
+    --primary-color: #0d2b5e;
     --secondary-color: #15438c;
     --nav-bg: #f8f9fa;
     --card-bg: #f4f6f9;
@@ -20,37 +20,96 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
-body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; }
+body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
 
-/* Navegación */
-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background-color: var(--nav-bg); border-bottom: 1px solid var(--border-color); }
+/* Navegación (La tuya con efecto cristal) */
+nav { 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 15px 50px; 
+    background-color: rgba(248, 249, 250, 0.8);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky; top: 0; z-index: 1000; 
+    backdrop-filter: blur(10px);
+}
+[data-theme="dark"] nav { background-color: rgba(26, 26, 26, 0.8); }
+
 nav .logo { font-size: 24px; font-weight: bold; color: var(--primary-color); text-decoration: none; }
-nav ul { list-style: none; display: flex; gap: 20px; }
-nav ul li a { text-decoration: none; color: var(--text-color); font-weight: 500; transition: color 0.3s; }
+nav ul { list-style: none; display: flex; gap: 30px; }
+nav ul li a { text-decoration: none; color: var(--text-color); font-weight: 500; transition: color 0.3s; position: relative; }
 nav ul li a:hover { color: var(--primary-color); }
 
-#theme-toggle { background: var(--primary-color); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+/* Botón Tema */
+#theme-toggle { background: var(--primary-color); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+#theme-toggle:hover { background: var(--secondary-color); }
 
 /* Contenedores */
-.container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-.hero { text-align: center; padding: 60px 20px; background-color: var(--card-bg); border-radius: 10px; margin-bottom: 40px; }
-.hero h1 { font-size: 40px; color: var(--primary-color); margin-bottom: 10px; }
-.hero p { font-size: 18px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+.container { max-width: 1450px; margin: 0 auto; padding: 40px 20px; }
 
+/* Hero */
+.hero-modern {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    padding: 20px 0;
+    min-height: 50vh;
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-image {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.hero-image img {
+    width: 100%;
+    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.hero-image img:hover {
+    transform: translateY(-5px);
+}
+
+/* Botón Principal Azul */
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+}
+
+/* Tarjetas */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
-.card { background-color: var(--card-bg); padding: 30px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; }
+.card { background-color: var(--card-bg); padding: 30px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; transition: 0.3s; }
+.card:hover { transform: translateY(-5px); }
 .card h3 { color: var(--primary-color); margin-bottom: 15px; }
 
+/* Footer */
 footer { text-align: center; padding: 20px; background-color: var(--nav-bg); margin-top: 40px; border-top: 1px solid var(--border-color); }
 
-/* Contenedor del Iframe del Mapa */
+
 .iframe-container {
     width: 100%;
     height: 75vh;
+    min-height: 600px;
     border-radius: 12px;
     overflow: hidden;
-    border: 2px solid var(--border-color);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
     background-color: var(--card-bg);
 }
 
@@ -58,4 +117,282 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     width: 100%;
     height: 100%;
     border: none;
+    display: block;
+}
+
+
+.features-section {
+    margin-top: 80px;
+    padding: 40px 0;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 36px;
+    margin-bottom: 50px;
+    color: var(--text-color);
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 30px;
+}
+
+.feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 40px 30px;
+    border-radius: 16px;
+    text-align: center;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.4s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    border-color: transparent;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .feature-card:hover {
+    box-shadow: 0 15px 30px rgba(74, 144, 226, 0.15); 
+}
+
+.feature-card:hover::before {
+    opacity: 0.03;
+}
+
+
+.icon-box {
+    font-size: 40px;
+    margin: 0 auto 25px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg-color);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+    border: 1px solid var(--border-color);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-theme="dark"] .icon-box {
+    box-shadow: 0 8px 16px rgba(255,255,255,0.03);
+}
+
+.feature-card:hover .icon-box {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.feature-card h3 {
+    color: var(--primary-color);
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+
+.feature-card p {
+    color: var(--text-color);
+    opacity: 0.8;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.feature-card strong {
+    color: var(--primary-color);
+}
+
+.pricing-section {
+    margin-top: 80px;
+    padding: 40px 0;
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 30px;
+    max-width: 1250px;
+    margin: 0 auto;
+}
+
+.pricing-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 40px 30px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.pricing-card.featured {
+    border: 2px solid var(--primary-color);
+    position: relative;
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(13, 43, 94, 0.15);
+}
+
+[data-theme="dark"] .pricing-card.featured {
+    box-shadow: 0 10px 30px rgba(74, 144, 226, 0.2);
+}
+
+.pricing-card.featured:hover {
+    transform: scale(1.05) translateY(-5px);
+}
+
+.badge {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary-color);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* Tipografía de precios */
+.pricing-card h3 {
+    font-size: 24px;
+    color: var(--text-color);
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.pricing-card .price {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.pricing-card .price span {
+    font-size: 18px;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+/* Lista de características */
+.pricing-features {
+    list-style: none;
+    flex-grow: 1;
+}
+
+.pricing-features li {
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.pricing-features li.disabled {
+    opacity: 0.5;
+}
+
+.pricing-features li.highlight-feature {
+    color: var(--primary-color);
+    font-weight: bold;
+    margin-top: 25px;
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.btn-outline:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* -------------------------------------- */
+/* FOOTER PROFESIONAL                     */
+/* -------------------------------------- */
+.site-footer {
+    background-color: var(--nav-bg);
+    border-top: 1px solid var(--border-color);
+    padding: 60px 20px 20px;
+    margin-top: 80px;
+}
+
+.footer-content {
+    max-width: 1250px; /* Alineado con el ancho de tu web */
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.footer-col h3 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.footer-col p {
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.footer-col ul {
+    list-style: none;
+}
+
+.footer-col ul li {
+    margin-bottom: 12px;
+}
+
+.footer-col ul li a {
+    color: var(--text-color);
+    opacity: 0.8;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.footer-col ul li a:hover {
+    color: var(--primary-color);
+    opacity: 1;
+    padding-left: 5px; /* Pequeño efecto de desplazamiento al pasar el ratón */
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 14px;
 }
