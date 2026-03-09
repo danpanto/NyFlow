@@ -28,9 +28,12 @@ class Pipeline(App):
         super().__init__()
         self.dates, self.vendors = get_years_months_vendors()  #type:ignore
         self.files = get_parquet_files()
+        self.minio_files = None
         self.selected_dates = None
         self.selected_merge_files = None
         self.selected_outlier_files = None
+        self.selected_transform_files = None
+        self.selected_transform_minio_files = None
 
 
     def add_log(self, message: str, status: str = "INFO"):
@@ -112,6 +115,32 @@ class Pipeline(App):
         )
 
 
+    def open_transform_files_picker(self):
+        from pipeline.pl_utils import get_parquet_files
+
+        def handle_return(data):
+            if data is not None:
+                self.selected_transform_files = data
+
+        def handle_minio_return(data):
+            if data is not None:
+                self.selected_transform_minio_files = data
+
+        value = self.query_one("#transform-model-selector").value  #type:ignore
+        if value == "Minio" and self.minio_files is None:
+            self.minio_files = get_parquet_files(local_files=False)
+
+        self.push_screen(
+            TreeSelectionModal(
+                data=self.minio_files if value == "Minio" else self.files,  #type:ignore
+                selected_data=self.selected_transform_files if value != "Minio" else self.selected_transform_minio_files,
+                title_text="Select files to prepare for model",
+                local_files=value != "Minio"
+            ),
+            handle_return if value != "Minio" else handle_minio_return
+        )
+
+
     def on_key(self, event: events.Key) -> None:
         if event.key == "escape":
             event.stop()
@@ -132,6 +161,13 @@ class Pipeline(App):
         elif message.sender.id == "merge_selector":
             self.query_one("#merge-collapsable").display = (message.value != "None")
 
+        elif message.sender.id == "transform-model-selector":
+            self.query_one("#transform-model-collapsable").display = (message.value != "None")
+
+
+    def on_check_box_changed(self, message: CheckBox.Changed) -> None:
+        return
+
 
     @work(exclusive=True, thread=True)
     def run_dl_pipeline(self):
@@ -147,7 +183,7 @@ class Pipeline(App):
         from data_preprocessing.preprocess import transform_columns
 
         dl_mode = self.query_one("#dl_mode_selector").value  #type:ignore
-        transf = self.query_one("#tf_selector").is_selected  #type:ignore
+        transf = self.query_one("#tf_selector").value  #type:ignore
         vendor_mode = self.query_one("#dl_selector").value  #type:ignore
         date_mode = self.query_one("#date_selector").value  #type:ignore
 
@@ -178,7 +214,7 @@ class Pipeline(App):
         else:
             for v_id, name in vendor_map.items():
                 widget = self.query_one(f"#{v_id}")
-                if widget.is_selected:   #type:ignore
+                if widget.value:   #type:ignore
                     vendors.append(name)
 
         # ------------------------------------- #
@@ -259,7 +295,8 @@ class Pipeline(App):
 
 
         merge_type = self.query_one("#merge_selector").value  #type:ignore
-        del_files_merge = self.query_one("#del-files-merge-checkbox").is_selected  #type:ignore
+        del_files_merge = self.query_one("#del-files-merge-checkbox").value  #type:ignore
+        transform_files_type = self.query_one("#transform-model-selector").value  #type:ignore
 
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
@@ -310,6 +347,9 @@ class Pipeline(App):
                     title="Removal successful",
                     status="SUCCESS"
                 )
+
+        if transform_files_type != "None":
+            pass
 
         self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
 
@@ -427,7 +467,24 @@ class Pipeline(App):
                                     action=self.open_outlier_files_picker,
                                     id="outlier-files-popup-button",
                                     classes="focuseable"
-                                )      
+                                )
+
+                            with Horizontal(classes="optbox-row"):
+                                yield Label("Transform data for model")
+                                yield OptionBox(
+                                    ["None", "Local", "Minio"],
+                                    id="transform-model-selector",
+                                    classes="focuseable"
+                                ) 
+
+                            with Vertical(id="transform-model-collapsable"):
+                                with Horizontal(classes="optbox_sub1-row middle-button"):
+                                    yield Button(
+                                        "Select Files",
+                                        action=self.open_transform_files_picker,
+                                        id="transform-model-popup-button",
+                                        classes="focuseable"
+                                    )     
                             
                             with Vertical(classes="down-right"):
                                 yield Button("Start", action=self.run_prep_pipeline, classes="focuseable")

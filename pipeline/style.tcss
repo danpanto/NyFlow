@@ -106,7 +106,7 @@ SelectionList:focus {
     text-align: right;
 }
 
-#vendors-collapsable, #date-collapsable, #merge-collapsable {
+#vendors-collapsable, #date-collapsable, #merge-collapsable, #transform-model-collapsable {
     display: none;
     height: auto;
 }
