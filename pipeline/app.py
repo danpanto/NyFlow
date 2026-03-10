@@ -1,6 +1,3 @@
-from os import remove
-
-from numpy import meshgrid
 from pipeline.widgets import *
 from pipeline.selection_tree import TreeSelectionModal
 from textual import events, work
@@ -27,6 +24,8 @@ class Pipeline(App):
 
     def __init__(self):
         from pipeline.pl_utils import get_years_months_vendors, get_parquet_files
+        from minio_utils import MinioSparkClient
+        from os import getenv
 
         super().__init__()
         self.dates, self.vendors = get_years_months_vendors()  #type:ignore
@@ -35,6 +34,17 @@ class Pipeline(App):
         self.minio_files = None
         self.selected_files = None
         self.selected_minio_files = None
+
+        self._client = MinioSparkClient(
+            endpoint="minio.fdi.ucm.es",
+            access_key=getenv("MINIO_ACCESS_KEY"),  #type:ignore
+            secret_key=getenv("MINIO_SECRET_KEY"),  #type:ignore
+            bucket_name="pd2",
+            base_dir="cityenjoyer",
+            memory = 8,
+            heapsize = 4,
+            num_part = 100
+        )
 
 
     def add_log(self, message: str, status: str = "INFO"):
@@ -48,6 +58,11 @@ class Pipeline(App):
     def notify_and_log(self, message: str, title: str = "", status: str = "INFO"):
         self.notify(message, title=title)
         self.add_log(f"{f"({title}):":28} {message}" if title else message, status)
+
+
+    def _exit_app(self):
+        self._client.disconnect()
+        self.exit()
 
 
     def action_switch_tab(self, content_id: str, nav_id: str) -> None:
@@ -99,7 +114,7 @@ class Pipeline(App):
 
         value = self.query_one("#file_location_selector").value  #type:ignore
         if value == "Minio" and self.minio_files is None:
-            self.minio_files = get_parquet_files(local_files=False)
+            self.minio_files = get_parquet_files(client=self._client)
 
         self.push_screen(
             TreeSelectionModal(
@@ -110,7 +125,7 @@ class Pipeline(App):
                     else self.selected_minio_files
                 ),
                 title_text="Select files to prepare for model",
-                local_files=value != "Minio"
+                client=self._client
             ),
             handle_return if value != "Minio" else handle_minio_return
         )
@@ -119,7 +134,7 @@ class Pipeline(App):
     def on_key(self, event: events.Key) -> None:
         if event.key == "escape":
             event.stop()
-            self.exit()
+            self._exit_app()
         elif event.key == "up":
             self.screen.focus_previous()
         elif event.key == "down":
@@ -132,10 +147,6 @@ class Pipeline(App):
 
         elif message.sender.id == "date_selector":
             self.query_one("#date-collapsable").display = (message.value == "Custom")
-
-        elif message.sender.id == "file_location_selector":
-            self.query_one("#file-location-collapsable").display = (message.value != "None")
-            self.query_one("#del-outliers-collapsable").display = (message.value == "Local")
 
 
     def on_check_box_changed(self, message: CheckBox.Changed) -> None:
@@ -263,26 +274,22 @@ class Pipeline(App):
 
     @work(exclusive=True, thread=True)
     def run_prep_pipeline(self):
-        from data_preprocessing.preprocess import merge_lazy_frames, remove_outliers_local, remove_outliers_minio
-        from pipeline.pl_utils import remove_files
-        from pathlib import Path
+        from data_preprocessing.preprocess import (
+            remove_outliers_local,
+            remove_outliers_minio,
+            merge_files_local,
+            merge_files_minio
+        )
 
 
         file_location = self.query_one("#file_location_selector").value  #type:ignore
-        if file_location == "None":
-            self.notify(message="No files were selected")
-            return
-
         del_outliers = self.query_one("#outlier-checkbox").value  #type:ignore
-        merge_type = self.query_one("#merge_selector").value  #type:ignore
-        del_og_files = self.query_one("#del-og-files-checkbox").value  #type:ignore
-        del_mid_files = self.query_one("#del-mid-files-checkbox").value  #type:ignore
+        merge = self.query_one("#merge_checkbox").value  #type:ignore
 
         files = self.selected_files if file_location == "Local" else self.selected_minio_files
         if files is None or len(files) <= 0:
             self.notify(message="No files were selected")
             return
-        og_files = files
 
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
@@ -290,47 +297,65 @@ class Pipeline(App):
         self.call_from_thread(lambda: [setattr(w, "disabled", True) for w in self.query("#dialog, #dialog2")])
 
         res_files = set()
+        single_file = None
+
         if del_outliers:
             self.notify_and_log(
                 message="Please wait...",
                 title="Removing outliers"
             )
 
-            if file_location == "Local":
-                aux = remove_outliers_local(filepaths=files, logger=self.notify_and_log)
-            else:
-                aux = remove_outliers_minio(filepaths=files, logger=self.notify_and_log)
-            
-            if aux is not None and len(aux) > 0:
-                res_files = aux
+            try:
+                if file_location == "Local":
+                    aux = remove_outliers_local(filepaths=files)
+                else:
+                    aux = remove_outliers_minio(filepaths=files, client=self._client)
+                
+                if aux is not None and len(aux) > 0:
+                    res_files = aux
 
-            self.notify_and_log(
-                message="Outliers removed successfully",
-                title="Removal successful",
-                status="SUCCESS"
-            )
+                self.notify_and_log(
+                    message="Outliers removed successfully",
+                    title="Removal successful",
+                    status="SUCCESS"
+                )
 
-            self.notify_and_log(f"{res_files}")
+            except Exception as outlier_exc:
+                self.notify_and_log(
+                    message=f"Error while removing outliers: {str(outlier_exc)}",
+                    title="Outlier Removal error",
+                    status="ERROR"
+                )
 
-        if merge_type != "None":
+        if merge:
             self.notify_and_log(
                 message="Please wait...",
                 title="Merging data"
             )
 
-            aux = res_files if len(res_files) > 0 else files
-            aux = merge_lazy_frames(merge_type, aux)
-            if aux is not None:
-                files = aux
+            try:
+                aux = res_files if len(res_files) > 0 else files
 
-            self.notify_and_log(
-                message="Data merged successfully",
-                title="Merge successful",
-                status="SUCCESS"
-            )
+                if file_location == "Local":
+                    single_file = merge_files_local(aux)
+                else:
+                    single_file = merge_files_minio(aux, self._client)
+                
+                self.notify_and_log(
+                    message="Data merged successfully",
+                    title="Merge successful",
+                    status="SUCCESS"
+                )
 
-        if del_og_files:
-            remove_files(og_files, Path.cwd() / "data")
+            except Exception as merge_exc:
+                self.notify_and_log(
+                    message=f"Error while merging data: {str(merge_exc)}",
+                    title="Merge error",
+                    status="ERROR"
+                )
+
+        if single_file:
+            self.notify(single_file)
 
         self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
 
@@ -405,7 +430,7 @@ class Pipeline(App):
 
                             with Vertical(classes="down-right"):
                                 yield Button("Download", action=self.run_dl_pipeline, classes="focuseable")
-                                yield Button("Exit", action=self.exit, classes="focuseable")
+                                yield Button("Exit", action=self._exit_app, classes="focuseable")
 
             # -------------------------- #
             # ----- Preprocess Tab ----- #
@@ -417,40 +442,6 @@ class Pipeline(App):
                             yield Label("Preprocess Settings", id="title2")
 
                             with Horizontal(classes="optbox-row"):
-                                yield Label("File location:")
-                                yield OptionBox(
-                                    ["None", "Local", "Minio"],
-                                    id="file_location_selector",
-                                    classes="focuseable"
-                                )
-
-                            with Vertical(id="file-location-collapsable"):
-                                with Vertical(id="del-outliers-collapsable"):
-                                    with Horizontal(classes="optbox_sub1-row"):
-                                        yield CheckBox(
-                                            is_selected=False,
-                                            id="del-og-files-checkbox",
-                                            classes="focuseable"
-                                        )
-                                        yield Label("Delete original files when finished")
-
-                                    with Horizontal(classes="optbox_sub1-row"):
-                                        yield CheckBox(
-                                            is_selected=False,
-                                            id="del-mid-files-checkbox",
-                                            classes="focuseable"
-                                        )
-                                        yield Label("Delete intermediate files when finished")
-
-                                with Horizontal(classes="optbox_sub1-row middle-button"):
-                                    yield Button(
-                                        "Select Files",
-                                        action=self.open_file_picker,
-                                        id="file-selection-popup-button",
-                                        classes="focuseable"
-                                    )
-
-                            with Horizontal(classes="optbox-row"):
                                 yield Label("Remove outliers")
                                 yield CheckBox(
                                     is_selected=False,
@@ -459,15 +450,32 @@ class Pipeline(App):
                                 )
                             
                             with Horizontal(classes="optbox-row"):
-                                yield Label("Merge type:")
-                                yield OptionBox(
-                                    ["None", "By vendor", "By month", "By year", "Single file"],
-                                    id="merge_selector",
+                                yield Label("Merge into single file:")
+                                yield CheckBox(
+                                    is_selected=False,
+                                    id="merge_checkbox",
                                     classes="focuseable"
                                 )
+
+                            with Horizontal(classes="optbox-row"):
+                                yield Label("File location:")
+                                yield OptionBox(
+                                    ["Local", "Minio"],
+                                    id="file_location_selector",
+                                    classes="focuseable"
+                                )
+
+                            with Horizontal(classes="optbox-row middle-button"):
+                                yield Button(
+                                    "Select Files",
+                                    action=self.open_file_picker,
+                                    id="file-selection-popup-button",
+                                    classes="focuseable"
+                                )
+
                             with Vertical(classes="down-right"):
                                 yield Button("Start", action=self.run_prep_pipeline, classes="focuseable")
-                                yield Button("Exit", action=self.exit, classes="focuseable")
+                                yield Button("Exit", action=self._exit_app, classes="focuseable")
 
             # -------------------- #
             # ----- Logs Tab ----- #

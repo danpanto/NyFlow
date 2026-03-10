@@ -5,6 +5,7 @@ from textual import events
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
 from pipeline.widgets import Button
+from minio_utils import MinioSparkClient
 
 
 class SelectionTree(Tree):
@@ -16,14 +17,12 @@ class SelectionTree(Tree):
     can_focus = True
 
     def __init__(self, data: dict, selected_data: set | None = None, label: str = "Root",
-                    id: str | None = None, start_expanded: bool = False, local_files: bool = True
-                ):
+                    id: str | None = None, start_expanded: bool = False):
 
         super().__init__(label, id=id)
         self.node_data = data
         self.selected_data = selected_data if selected_data is not None else set()
         self.start_expanded = start_expanded
-        self.local_files = local_files
 
 
     def _build_tree(self, data: dict, parent_node: TreeNode):
@@ -49,7 +48,7 @@ class SelectionTree(Tree):
         return not node.allow_expand
         
 
-    def _rebuild(self, new_data):
+    def rebuild(self, new_data):
         self.node_data = new_data 
         
         self.clear()
@@ -108,13 +107,7 @@ class SelectionTree(Tree):
 
 
     def on_key(self, event: events.Key):
-        from pipeline.pl_utils import get_parquet_files
-
-        if event.key == "r":
-            self._rebuild(get_parquet_files(local_files=self.local_files))
-            event.stop()
-
-        elif event.key == "up":
+        if event.key == "up":
             self.action_cursor_up()
             event.stop()
 
@@ -167,14 +160,14 @@ class TreeSelectionModal(ModalScreen):
     CSS_PATH = "style.tcss"
     
     def __init__(self, data: dict, selected_data: set | None = None,
-        title_text: str = "Select Data", local_files: bool = True):
+        title_text: str = "Select Data", client: MinioSparkClient | None = None):
 
         super().__init__()
         self.data = data
         self.selected_data = set(selected_data) if selected_data else set()
         self.last_button = None
         self.title_text = title_text
-        self.local_files = local_files
+        self._client = client
 
 
     def confirm(self):
@@ -186,6 +179,8 @@ class TreeSelectionModal(ModalScreen):
 
     
     def on_key(self, event: events.Key) -> None:
+        from pipeline.pl_utils import get_parquet_files
+
         if event.key == "escape":
             event.stop()
             self.cancel()
@@ -194,7 +189,11 @@ class TreeSelectionModal(ModalScreen):
         confirm_btn = self.query_one("#confirm-btn")
         modal_sidebar = self.query_one("#modal-sidebar")
 
-        if event.key == "left":
+        if event.key == "r":
+            selection_tree.rebuild(get_parquet_files(self._client))  #type:ignore
+            event.stop()
+
+        elif event.key == "left":
             if self.focused != selection_tree:
                 self.last_button = self.focused
                 selection_tree.focus()
@@ -230,8 +229,7 @@ class TreeSelectionModal(ModalScreen):
                             self.data,
                             self.selected_data,
                             id="selection-tree",
-                            start_expanded=False,
-                            local_files=self.local_files
+                            start_expanded=False
                         )
 
                         with Vertical(id="modal-sidebar"):

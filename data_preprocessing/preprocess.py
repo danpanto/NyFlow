@@ -1,5 +1,6 @@
 import polars as pl
 from pathlib import Path
+from minio_utils import MinioSparkClient
 
 
 def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
@@ -50,93 +51,7 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
     return lf.select(UNIFIED_SCHEMA)
 
 
-def merge_lazy_frames(method: str, files: set[Path]) -> list[Path] | None:
-    """
-    Merge multiple data scattered through various local files into one (or more, depending on criteria) file
-
-    Args:
-        method          (str):                      How to merge data (by year, month, ...)
-        files           (set[Path]):                List of files to merge
-
-    Returns:
-        out             (list[Path] | None):        List of the new local files (or None if error)
-    """
-
-    data_path = Path.cwd() / "data"
-    merge_path = data_path / "merged"
-    merge_path.mkdir(exist_ok=True)
-
-    if not files:
-        return None
-
-    ret_paths: list[Path] = []
-
-    if method == "Single file":
-        lfs = [pl.scan_parquet(f) for f in files]
-        file_path = Path(merge_path, "all_merged.parquet")
-        if file_path.exists():
-            file_path.unlink()
-        pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
-        ret_paths.append(file_path)
-
-    elif method == "By vendor":
-        vendor_groups = {}
-
-        # Get all files separated by vendor
-        for f in files:
-            vid = f.stem
-            vendor_groups.setdefault(vid, []).append(f)
-
-        # Process each vendor group individually
-        for vid, grouped_files in vendor_groups.items():
-            lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(merge_path, f"{vid}_merged.parquet")
-            if file_path.exists():
-                file_path.unlink()
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
-            ret_paths.append(file_path)
-            
-    elif method == "By month":
-        month_groups = {}
-
-        # Get all files separated by vendor
-        for f in files:
-            month = f.parent.name
-            month_groups.setdefault(month, []).append(f)
-
-        # Process each month group individually
-        for month, grouped_files in month_groups.items():
-            lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(merge_path, f"{month}_merged.parquet")
-            if file_path.exists():
-                file_path.unlink()
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
-            ret_paths.append(file_path)
-
-    elif method == "By year":
-        year_groups = {}
-
-        # Get all files separated by vendor
-        for f in files:
-            year = f.parent.parent.name
-            year_groups.setdefault(year, []).append(f)
-
-        # Process each year group individually
-        for year, grouped_files in year_groups.items():
-            lfs = [pl.scan_parquet(f) for f in grouped_files]
-            file_path = Path(merge_path, f"{year}_merged.parquet")
-            if file_path.exists():
-                file_path.unlink()
-            pl.concat(lfs, how="diagonal", rechunk=False).sink_parquet(file_path)
-            ret_paths.append(file_path)
-
-    else:
-        return None
-
-    return ret_paths
-
-
-def remove_outliers_local(filepaths: set[Path], logger):
+def remove_outliers_local(filepaths: set[str]):
     config = {
         "fare_amount":  (0, 10000),
         "tip_amount":   (0, 10000),
@@ -145,38 +60,26 @@ def remove_outliers_local(filepaths: set[Path], logger):
     }
     clean_paths = set()
 
+    data_dir = Path.cwd() / "data"
+    clean_dir = data_dir / "clean"
+    clean_dir.mkdir(exist_ok=True, parents=True)
+
     for file in filepaths:
-        try:
-            lf = pl.scan_parquet(file)
-            
-            lf_final = lf.with_columns([
-                pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
-                *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
-            ])
+        lf_final = pl.scan_parquet(file).with_columns([
+            pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
+            *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
+        ])
 
-            parts = file.relative_to(Path.cwd()).parts
-            out_path = Path(Path.cwd(), parts[0], "clean", *parts[1:-1])
-            out_path.mkdir(exist_ok=True, parents=True)
-            final_path = Path(out_path, parts[-1])
+        p = Path(file)
+        final_path = clean_dir / f"{'_'.join(p.relative_to(data_dir).parts[:-1])}_{p.name}"
 
-            lf_final.sink_parquet(final_path)
-            clean_paths.add(final_path)
+        lf_final.sink_parquet(final_path)
+        clean_paths.add(str(final_path))
 
-        except Exception as outlier_exc:
-            logger(
-                message=f"Error while removing outliers from {file}",
-                title="Outlier Removal error",
-                status="ERROR"
-            )
-            logger(message=str(outlier_exc))
-            clean_paths.add(file)
-    
     return clean_paths
 
 
-def remove_outliers_minio(filepaths: set[Path], logger):
-    from minio_utils import MinioSparkClient
-    from os import getenv
+def remove_outliers_minio(filepaths: set[str], client: MinioSparkClient):
     from pyspark.sql import functions as F
     from pyspark.sql.types import IntegerType, ShortType
 
@@ -188,44 +91,62 @@ def remove_outliers_minio(filepaths: set[Path], logger):
     }
     clean_paths = set()
 
-    client = MinioSparkClient(
-        endpoint="minio.fdi.ucm.es",
-        access_key=getenv("MINIO_ACCESS_KEY"),  #type:ignore
-        secret_key=getenv("MINIO_SECRET_KEY")  #type:ignore
-    )
     client.connect()
 
+    client.mkdir("clean", exist_ok=True)
+
     for file in filepaths:
-        try:
-            df = client.read_parquet(str(file))
-            
-            df_final = df.withColumn(
-                "trip_distance",
-                F.least(
-                    F.greatest(F.col("trip_distance") * 1609.34, F.lit(0)),
-                    F.lit(200 * 1609.34)
-                ).cast(IntegerType())
+        df_final = client.read_parquet(str(file)).withColumn(
+            "trip_distance",
+            F.least(
+                F.greatest(F.col("trip_distance") * 1609.34, F.lit(0)),
+                F.lit(200 * 1609.34)
+            ).cast(IntegerType())
+        )
+
+        for col_name, (low, high) in config.items():
+            df_final = df_final.withColumn(
+                col_name,
+                F.least(F.greatest(F.col(col_name), F.lit(low)), F.lit(high)).cast(ShortType())
             )
 
-            for col_name, (low, high) in config.items():
-                df_final = df_final.withColumn(
-                    col_name,
-                    F.least(F.greatest(F.col(col_name), F.lit(low)), F.lit(high)).cast(ShortType())
-                )
+        p = Path(file)
+        final_path = f"clean/{p.stem}_clean{p.suffix}"
+        client.write_parquet(df_final, final_path)
+        clean_paths.add(final_path)
 
-            final_path = Path(*file.parts[:-1], f"{file.stem}_clean{file.suffix}")
-
-            client.write_parquet(df_final, str(final_path))
-            clean_paths.add(final_path)
-
-        except Exception as outlier_exc:
-            logger(
-                message=f"Error while removing outliers from {file}",
-                title="Outlier Removal error",
-                status="ERROR"
-            )
-            logger(message=str(outlier_exc))
-            clean_paths.add(file)
-    
-    client.disconnect()
     return clean_paths
+
+
+def merge_files_local(files: set[str]):
+    from datetime import datetime
+
+    data_path = Path.cwd() / "data"
+    merge_path = data_path / "merged"
+    merge_path.mkdir(exist_ok=True)
+
+    file_path = Path(merge_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_merged.parquet")
+    if file_path.exists():
+        file_path.unlink()
+    
+    pl.concat(
+        [pl.scan_parquet(f) for f in files],
+        how="diagonal",
+        rechunk=False
+    ).sink_parquet(file_path)
+
+    return str(file_path)
+
+
+def merge_files_minio(files: set[str], client: MinioSparkClient):
+    from datetime import datetime
+
+    client.mkdir("merged", exist_ok=True)
+    client.connect()
+
+    file_path = f"merged/{datetime.now().strftime("%y%m%d_%H%M%S")}_merged.parquet"
+    
+    df = client.read_parquet(files, mergeSchema="true")
+    client.write_parquet(df, file_path)
+
+    return file_path

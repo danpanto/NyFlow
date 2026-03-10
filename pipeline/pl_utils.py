@@ -1,3 +1,6 @@
+from minio_utils import MinioSparkClient
+
+
 def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | None:
     from bs4 import BeautifulSoup
     import requests as rq
@@ -29,10 +32,8 @@ def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | 
     return (dates, vendors)  #type:ignore
 
 
-def get_parquet_files(local_files: bool = True) -> dict[str, dict]:
+def get_parquet_files(client: MinioSparkClient | None = None) -> dict[str, dict]:
     from pathlib import Path
-    from minio import Minio
-    from os import getenv
 
     def add_file(data: dict, parts: tuple, final_value):
         if len(parts) == 0:
@@ -50,29 +51,20 @@ def get_parquet_files(local_files: bool = True) -> dict[str, dict]:
 
     res = {}
 
-    if local_files:
+    if client is None:
         data_path: Path = Path.cwd() / "data"
         if data_path.exists():
             for file_path in data_path.rglob("*.parquet"):
                 if file_path.is_file():
-                    add_file(res, file_path.relative_to(data_path).parts, file_path)
+                    add_file(res, file_path.relative_to(data_path).parts, str(file_path))
 
     else:
-        objects = Minio(
-            endpoint="minio.fdi.ucm.es",
-            access_key=getenv("MINIO_ACCESS_KEY"),
-            secret_key=getenv("MINIO_SECRET_KEY"),
-            secure=True
-        ).list_objects(
-            bucket_name="pd2",
-            prefix="cityenjoyer/",
-            recursive=True
-        )
+        objects = client.list_objects(path="", recursive=True)
         
         for obj in objects:
             if (obj.object_name.endswith(".parquet")  #type:ignore
             and not obj.object_name.endswith("snappy.parquet")):  #type:ignore
-                add_file(res, Path(obj.object_name).parts, Path(f"pd2/{obj.object_name}"))  #type:ignore
+                add_file(res, Path(obj.object_name).parts, obj.object_name.replace("cityenjoyer/", ""))  #type:ignore
 
     return res
 
