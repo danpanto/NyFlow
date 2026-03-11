@@ -7,6 +7,7 @@ import { DataQueryLayer } from "./DataQueryLayer.js";
 import { RouteLayer } from "./RouteLayer.js";
 import { RestaurantRatingsLayer } from "./RestaurantLayer.js";
 import { AskingRentLayer } from "./AskingRentLayer.js";
+import { LandmarkLayer } from "./LandmarkLayer.js";
 import { queryService } from "./services/QueryService.js";
 import { SUPPORTED_VARIABLES } from "./queryVariables.js";
 
@@ -49,6 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const askingRentLayer = new AskingRentLayer(mapManager, sharedBackend);
     layerSwapperData["asking_rent"] = askingRentLayer;
+
+    const landmarkLayer = new LandmarkLayer(mapManager, sharedBackend, queryLayers["mean_tip_dis"]);
+    layerSwapperData["landmarks"] = landmarkLayer;
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 

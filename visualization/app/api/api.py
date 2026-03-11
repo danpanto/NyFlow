@@ -314,3 +314,20 @@ async def get_asking_rent(req: QueryRequest, request: Request):
     ))
 
     return {"status": "ok", "data": response_data}
+
+@router.post("/landmark-points")
+async def get_landmarks(request: Request):
+    try:
+        df = request.app.state.landmarks.collect()
+
+        data = []
+        for row in df.iter_rows(named=True):
+            data.append({
+                "name": row["Landmark name"],
+                "lat": float(row["Latitude"]),
+                "lng": float(row["Longitude"])
+            })
+        return {"status": "ok", "data": data}
+    except Exception as e:
+        print(f"Error serving landmark points: {e}")
+        return {"status": "error"}

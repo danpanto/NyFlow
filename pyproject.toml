@@ -13,6 +13,7 @@ dependencies = [
     "geopandas>=1.1.2",
     "ipykernel>=7.1.0",
     "loadenv>=0.1.1",
+    "lxml>=6.0.2",
     "matplotlib>=3.10.8",
     "minio>=7.2.20",
     "nbformat>=5.10.4",

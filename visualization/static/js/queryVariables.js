@@ -105,6 +105,13 @@ export const VARIABLE_CONFIG = {
         description: "The average asking rent in this zone.",
         formatter: compactCurrency,
         units: "USD"
+    },
+    landmarks: {
+        longName: "Touristic Landmarks",
+        shortName: "Landmarks",
+        description: "National and Historic Landmarks. With tip per distance layer.",
+        formatter: compactCurrency,
+        units: "USD"
     }
 };
 

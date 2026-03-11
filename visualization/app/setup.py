@@ -20,7 +20,8 @@ REQUIRED_FILES = {
     "taxi_zones.geojson": "cityenjoyer/taxi_zones.geojson",
     "aggregation.parquet": "cityenjoyer/visualization_aggregated.parquet",
     "restaurant_info.geojson": "cityenjoyer/restaurant_info.geojson",
-    "asking_rent_data.parquet": "cityenjoyer/asking_rent_data.parquet"
+    "asking_rent_data.parquet": "cityenjoyer/asking_rent_data.parquet",
+    "landmarks.parquet": "cityenjoyer/landmarks.parquet"
 }
 
 def load_and_validate_file(file_path: Path):
@@ -84,6 +85,7 @@ async def lifespan(app: FastAPI):
     app.state.lf = app.state.files["aggregation.parquet"]
     app.state.taxi_zones = app.state.files["taxi_zones.geojson"]
     app.state.rent = app.state.files["asking_rent_data.parquet"]
+    app.state.landmarks = app.state.files["landmarks.parquet"]
     app.state.gdf_zones = gpd.GeoDataFrame.from_features(app.state.files["taxi_zones.geojson"]["features"])
     app.state.gdf_zones.set_crs(epsg=4326, inplace=True)
 
