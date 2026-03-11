@@ -226,9 +226,15 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     )
 
     df_final = df_agg.join(
-        df_cent,
-        df_agg.PULocationID == df_cent.locationid, 
-        "left"
+        other=df_cent,
+        on=df_agg.PULocationID == df_cent.locationid, 
+        how="left"
+    ).withColumn(
+        "Latitude",
+        F.col("Latitude").cast(FloatType())
+    ).withColumn(
+        "Longitude",
+        F.col("Longitude").cast(FloatType())
     ).drop("locationid")
 
     client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
