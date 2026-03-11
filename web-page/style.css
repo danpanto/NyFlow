@@ -554,6 +554,113 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     letter-spacing: 1px;
 }
 
+/* --- DISEÑO DE LA PÁGINA DEL MAPA (map.html) --- */
+.map-page-layout {
+    display: flex;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 20px;
+    height: 75vh; /* Altura del mapa */
+    min-height: 600px;
+}
+
+.map-sidebar {
+    width: 280px;
+    min-width: 280px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    overflow-y: auto; /* Scroll si hay muchos botones */
+}
+
+.layer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.layer-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 12px 15px;
+    border-radius: 8px;
+    text-align: left;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.layer-btn:hover {
+    border-color: var(--primary-color);
+    background: rgba(13, 43, 94, 0.05);
+}
+
+[data-theme="dark"] .layer-btn:hover {
+    background: rgba(74, 144, 226, 0.1);
+}
+
+.layer-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.map-content {
+    flex-grow: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.map-content iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+/* Para Firefox */
+.map-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+/* Para Chrome, Edge y Safari */
+.map-sidebar::-webkit-scrollbar {
+    width: 6px; 
+}
+
+.map-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.map-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px; 
+}
+
+.map-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-color); 
+}
+
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-color);
+}
+
 /* --- ADAPTACIÓN PARA MÓVILES --- */
 @media (max-width: 768px) {
     nav {
@@ -586,5 +693,19 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     .iframe-container {
         height: 60vh;
         min-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .map-page-layout {
+        flex-direction: column;
+        height: auto;
+    }
+    .map-sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+    .map-content {
+        height: 500px;
     }
 }

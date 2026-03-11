@@ -47,6 +47,27 @@
             <button layer="mean_tip_dis" column="Agg data from TLC"></button>
         </layer-selector>
     </bottom-drawer>
+
+    <style>
+        bottom-drawer, 
+        right-drawer, 
+        .title-container, 
+        theme-btn { 
+            display: none !important; 
+        }
+    </style>
+    
+    <script>
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.action === 'change-layer') {
+                const layerSelector = document.querySelector('layer-selector');
+                if (layerSelector && typeof layerSelector.selectLayer === 'function') {
+                    layerSelector.selectLayer(event.data.value);
+                }
+            }
+        });
+    </script>
+
 </body>
 
 </html>

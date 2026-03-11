@@ -43,3 +43,20 @@ toggleButton.addEventListener('click', () => {
         iframe.contentWindow.postMessage(mensaje, '*');
     }
 });
+
+const layerButtons = document.querySelectorAll('.layer-btn');
+const mapIframe = document.getElementById('map-iframe');
+
+layerButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        layerButtons.forEach(btn => btn.classList.remove('active'));
+        
+        button.classList.add('active');
+        
+        const layerId = button.getAttribute('data-layer');
+        
+        if (mapIframe && mapIframe.contentWindow) {
+            mapIframe.contentWindow.postMessage({ action: 'change-layer', value: layerId }, '*');
+        }
+    });
+});

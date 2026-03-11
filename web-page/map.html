@@ -18,13 +18,46 @@
         <button id="theme-toggle">🌙</button>
     </nav>
 
-    <div class="container" style="max-width: 1400px;">
-        <h2 style="margin-bottom: 20px;">Plataforma de Visualización de Nueva York</h2>
-        <p style="margin-bottom: 30px;">Interactúa con el mapa para ver los datos sobre la ciudad</p>
-        
-        <div class="iframe-container" id="mapa">
-            <iframe src="http://127.0.0.1:8000" title="Mapa Interactivo NyFlow"></iframe>
-        </div>
+    <div class="map-header" style="text-align: center; margin: 40px 20px 20px; padding: 0 20px;">
+        <h1 style="font-size: 38px; margin-bottom: 15px; color: var(--primary-color);">Explora los Datos de Nueva York</h1>
+        <p style="font-size: 18px; color: var(--text-color); max-width: 800px; margin: 0 auto; line-height: 1.6; opacity: 0.9;">
+            Utiliza nuestro panel interactivo para descubrir patrones de movilidad en la ciudad. 
+            Selecciona una variable en el menú lateral para visualizar <strong>los datos</strong>, 
+            <strong>rutas óptimas</strong> o <strong>métricas clave</strong> del transporte en los diferentes distritos.
+        </p>
+    </div>
+
+    <div class="map-page-layout">
+        <aside class="map-sidebar">
+            <h3 style="margin-bottom: 5px;">Capas Disponibles</h3>
+            <p style="font-size: 14px; margin-bottom: 20px; color: var(--text-muted); opacity: 0.8;">
+                Haz clic en cualquier botón para actualizar el mapa en tiempo real.
+            </p>
+            
+            <div class="layer-buttons">
+                <button class="layer-btn active" data-layer="neighbourhoods">Neighbourhoods</button>
+                <button class="layer-btn" data-layer="routes">Optimal Routes</button>
+                <button class="layer-btn" data-layer="restaurant_ratings">Restaurant ratings</button>
+                <button class="layer-btn" data-layer="asking_rent">Asking Rent</button>
+                
+                <h4 style="margin: 15px 0 5px; font-size: 14px; color: var(--text-muted);">Agg data from TLC</h4>
+                <button class="layer-btn" data-layer="total_price">Total Price</button>
+                <button class="layer-btn" data-layer="total_tip">Total Tip</button>
+                <button class="layer-btn" data-layer="total_trips">Total Trips</button>
+                <button class="layer-btn" data-layer="mean_price">Mean Price</button>
+                <button class="layer-btn" data-layer="mean_tip">Mean Tip</button>
+                <button class="layer-btn" data-layer="mean_duration">Mean Duration</button>
+                <button class="layer-btn" data-layer="mean_price_time">Mean Price Time</button>
+                <button class="layer-btn" data-layer="mean_tip_time">Mean Tip Time</button>
+                <button class="layer-btn" data-layer="mean_distance">Mean Distance</button>
+                <button class="layer-btn" data-layer="mean_price_dis">Mean Price Dist</button>
+                <button class="layer-btn" data-layer="mean_tip_dis">Mean Tip Dist</button>
+            </div>
+        </aside>
+
+        <main class="map-content">
+            <iframe id="map-iframe" src="http://127.0.0.1:8000" title="Mapa Interactivo NyFlow"></iframe>
+        </main>
     </div>
 
     <footer class="site-footer">
