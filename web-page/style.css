@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 :root {
     --bg-color: #ffffff;
     --text-color: #333333;
@@ -18,19 +20,24 @@
     --border-color: #333333;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
 body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
 
 nav { 
     display: flex; justify-content: space-between; align-items: center; 
     padding: 15px 50px; 
-    background-color: rgba(248, 249, 250, 0.8);
+    background-color: rgba(248, 249, 250, 0.7); /* Más transparente */
+    backdrop-filter: blur(12px); /* EFECTO CRISTAL */
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-color);
-    position: sticky; top: 0; z-index: 1000; 
-    backdrop-filter: blur(10px);
+    position: sticky; /* Se queda fijo al bajar */
+    top: 0;
+    z-index: 1000;
 }
-[data-theme="dark"] nav { background-color: rgba(26, 26, 26, 0.8); }
+[data-theme="dark"] nav {
+    background-color: rgba(26, 26, 26, 0.7);
+}
 
 nav .logo { 
     font-size: 28px; 
@@ -94,7 +101,6 @@ nav ul li a:hover::after {
     align-items: center;
     justify-content: space-between;
     gap: 40px;
-    padding: 20px 0;
     min-height: 50vh;
 }
 
@@ -123,7 +129,7 @@ nav ul li a:hover::after {
 .hero-image {
     flex: 1;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .hero-image img {
@@ -659,6 +665,32 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
 }
 ::-webkit-scrollbar-thumb:hover {
     background-color: var(--primary-color);
+}
+
+/* --- GRADIENTES Y BRILLOS --- */
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #00b4db 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+}
+[data-theme="dark"] .text-gradient {
+    background: linear-gradient(135deg, #4a90e2 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- ANIMACIONES DE SCROLL (FADE IN) --- */
+.fade-in {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* --- ADAPTACIÓN PARA MÓVILES --- */

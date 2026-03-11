@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NyFlow - Inicio</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚕</text></svg>">
 </head>
 <body>
@@ -22,8 +23,7 @@
         <section class="hero-modern">
             <div class="hero-content">
                 <h1>NyFlow</h1>
-                <h2 style="font-size: 35px; margin-bottom: 15px;">Minimum deadheading,<br>Maximum flow.</h2>
-                <p style="font-size: 18px; margin-bottom: 30px;">Una herramienta potenciada con deep learning para facilitar a los conductores de transporte de NYC predicciones de demanda y precio en tiempo real.</p>
+                <h2 class="text-gradient" style="font-size: 35px; margin-bottom: 15px;">Minimum deadheading,<br>Maximum flow.</h2>                <p style="font-size: 18px; margin-bottom: 30px;">Una herramienta potenciada con deep learning para facilitar a los conductores de transporte de NYC predicciones de demanda y precio en tiempo real.</p>
                 <a href="map.html" class="btn-primary">Abrir Mapa Interactivo &rarr;</a>
                 <a href="#planes" class="btn-outline" style="padding: 15px 30px; font-size: 18px; text-decoration: none; border-radius: 8px; font-weight: bold;">Ver Planes</a>
             </div>
@@ -32,24 +32,24 @@
             </div>
         </section>
 
-        <section class="features-section">
+        <section class="features-section fade-in">
             <h2 class="section-title">Nuestros Objetivos y Público</h2>
             <div class="features-grid">
                 
                 <div class="feature-card">
-                    <div class="icon-box">🎯</div>
+                    <div class="icon-box"><i class="ph ph-target" style="font-size: 40px; color: var(--primary-color);"></i></div>
                     <h3>¿Por qué NyFlow?</h3>
                     <p>Los viajes han aumentado, pero la tasa de utilización de los conductores se mantiene estancada. Nuestro objetivo principal es <strong>minimizar los vehículos en servicio vacíos</strong>.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="icon-box">🚕</div>
+                    <div class="icon-box"><i class="ph ph-taxi" style="font-size: 40px; color: var(--primary-color);"></i></div>
                     <h3>Para Conductores</h3>
                     <p>Enfocado principalmente a conductores que buscan <strong>aumentar sus ganancias diarias</strong> mediante sugerencias de lugares estratégicos en tiempo real.</p>
                 </div>
 
                 <div class="feature-card">
-                    <div class="icon-box">🔮</div>
+                    <div class="icon-box"><i class="ph ph-magic-wand" style="font-size: 40px; color: var(--primary-color);"></i></div>
                     <h3>Tecnología de Vanguardia</h3>
                     <p>Utilizamos el Efecto "Caja de Cristal" para ofrecer <strong>simetría de información y transparencia</strong>, entregando los mismos macro-datos que posee la ciudad.</p>
                 </div>
@@ -57,7 +57,7 @@
             </div>
         </section>
 
-        <section class="pricing-section" id="planes">
+        <section class="pricing-section fade-in" id="planes">
             <h2 class="section-title">Planes de Pago</h2>
             <p style="text-align: center; color: var(--text-muted); margin-top: -30px; margin-bottom: 50px;">Elige el plan que mejor se adapte a tu ritmo de trabajo.</p>
             
@@ -107,12 +107,12 @@
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border-color);">
+            <div class="fade-in" style="text-align: center; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border-color);">
                 <h2 style="font-size: 28px; margin-bottom: 15px;">¿Prefieres llevar NyFlow en el bolsillo?</h2>
                 <p style="color: var(--text-muted); font-size: 18px; margin-bottom: 25px;">Descarga nuestra aplicación móvil y accede a las predicciones desde cualquier lugar.</p>
                 
                 <a href="javascript:void(0)" download class="btn-primary" style="display: inline-flex; align-items: center; gap: 12px; padding: 16px 35px; font-size: 18px; font-weight: bold; text-decoration: none; border-radius: 50px; cursor: default; opacity: 0.9;">
-                    <span style="font-size: 24px;">📱</span> Descargar la App
+                    <i class="ph ph-device-mobile" style="font-size: 26px;"></i> Descargar la app
                 </a>
                 
                 <p style="margin-top: 15px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">Disponible para iOS y Android</p>
