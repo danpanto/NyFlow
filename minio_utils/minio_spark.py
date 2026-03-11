@@ -37,11 +37,10 @@ class MinioSparkClient:
             str(JARS_DIR / "wildfly-openssl-1.1.3.Final.jar"),
         ])
 
-        # Set up spark config, managing stdout-related stuff
+        # Set up spark config
         self._spark_builder = SparkSession.builder \
             .appName("MinioSparkClient") \
-            .config("spark.jars", spark_jars) \
-            .config("spark.ui.showConsoleProgress", "true")
+            .config("spark.jars", spark_jars)
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \
@@ -63,7 +62,7 @@ class MinioSparkClient:
             .config("spark.hadoop.fs.s3a.fast.upload", "true") \
             .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
             
-        # Set up spark resources
+        # Configure spark resources
         self._spark_builder = self._spark_builder \
             .config("spark.storage.memoryFraction", "0.1") \
             .config("spark.memory.offHeap.enabled", "true") \

@@ -1,6 +1,7 @@
 # Specific files or directories
 data
 visualization/data
+spark_jars
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
