@@ -278,17 +278,25 @@ class Pipeline(App):
             remove_outliers_local,
             remove_outliers_minio,
             merge_files_local,
-            merge_files_minio
+            merge_files_minio,
+            prepare_data_local,
+            prepare_data_minio
         )
 
 
         file_location = self.query_one("#file_location_selector").value  #type:ignore
         del_outliers = self.query_one("#outlier-checkbox").value  #type:ignore
         merge = self.query_one("#merge_checkbox").value  #type:ignore
+        prep_model = self.query_one("#prep_model_checkbox").value  #type:ignore
 
         files = self.selected_files if file_location == "Local" else self.selected_minio_files
         if files is None or len(files) <= 0:
             self.notify(message="No files were selected")
+            return
+
+        if prep_model and len(files) > 1 and not merge:
+            self.notify("Multiple files selected for aggregation, \
+                but no merge requested. Please schedule merge or select one file only.")
             return
 
         # ------------------------------------- #
@@ -354,8 +362,32 @@ class Pipeline(App):
                     status="ERROR"
                 )
 
-        if single_file:
-            self.notify(single_file)
+        if prep_model:
+            self.notify_and_log(
+                message="Please wait...",
+                title="Preparing data for model"
+            )
+
+            try:
+                aux = single_file if single_file is not None else "a"
+
+                if file_location == "Local":
+                    prepare_data_local(aux)
+                else:
+                    prepare_data_minio(aux, self._client)
+                
+                self.notify_and_log(
+                    message="Data prepared successfully",
+                    title="Aggregation successful",
+                    status="SUCCESS"
+                )
+
+            except Exception as agg_exc:
+                self.notify_and_log(
+                    message=f"Error while aggregating data: {str(agg_exc)}",
+                    title="Aggregation error",
+                    status="ERROR"
+                )
 
         self.call_from_thread(lambda: [setattr(w, "disabled", False) for w in self.query("#dialog, #dialog2")])
 
@@ -454,6 +486,14 @@ class Pipeline(App):
                                 yield CheckBox(
                                     is_selected=False,
                                     id="merge_checkbox",
+                                    classes="focuseable"
+                                )
+
+                            with Horizontal(classes="optbox-row"):
+                                yield Label("Prepare data for model:")
+                                yield CheckBox(
+                                    is_selected=False,
+                                    id="prep_model_checkbox",
                                     classes="focuseable"
                                 )
 

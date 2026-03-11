@@ -150,3 +150,56 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
     client.write_parquet(df, file_path)
 
     return file_path
+
+
+def prepare_data_local(file: str):
+    from datetime import datetime
+
+    data_path = Path.cwd() / "data"
+    agg_path = data_path / "prepared_for_model"
+    agg_path.mkdir(exist_ok=True)
+
+    pl.scan_parquet(file).sort(
+        "pickup_datetime"
+    ).group_by_dynamic(
+        "pickup_datetime",
+        every="1h",
+        group_by=["VendorID", "PULocationID"]
+    ).agg(
+        pl.len().cast(pl.Int32).alias("demand"),
+        pl.col("trip_distance").mean().cast(pl.Float32).alias("avg_distance"),
+        pl.col("total_amount").mean().cast(pl.Float32).alias("avg_amount")
+    ).select(
+        "VendorID",
+        "PULocationID",
+        pl.col("pickup_datetime").alias("timestamp"),
+        "demand",
+        "avg_distance",
+        "avg_amount"
+    ).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet"))
+
+
+def prepare_data_minio(file: str, client: MinioSparkClient):
+    from datetime import datetime
+    from pyspark.sql import functions as F
+    from pyspark.sql.types import FloatType, IntegerType
+
+    client.mkdir("prepared_for_model", exist_ok=True)
+    client.connect()
+
+    df = client.read_parquet(file).groupBy(
+    "VendorID", 
+    "PULocationID", 
+        F.window("pickup_datetime", "1 hour").alias("window")
+    ).agg(
+        F.count("*").cast(IntegerType()).alias("demand"),
+        F.avg("trip_distance").cast(FloatType()).alias("avg_distance"),
+        F.avg("total_amount").cast(FloatType()).alias("avg_amount")
+    ).select(
+        "VendorID", 
+        "PULocationID", 
+        F.col("window.start").alias("timestamp"),
+        "demand", "avg_distance", "avg_amount"
+    )
+
+    client.write_parquet(df, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
