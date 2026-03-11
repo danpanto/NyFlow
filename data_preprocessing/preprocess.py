@@ -127,7 +127,7 @@ def merge_files_local(files: set[str]):
     merge_path = data_path / "merged"
     merge_path.mkdir(exist_ok=True)
 
-    file_path = Path(merge_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_merged.parquet")
+    file_path = Path(merge_path, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet")
     if file_path.exists():
         file_path.unlink()
     
@@ -146,7 +146,7 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
     client.mkdir("merged", exist_ok=True)
     client.connect()
 
-    file_path = f"merged/{datetime.now().strftime("%y%m%d_%H%M%S")}_merged.parquet"
+    file_path = f"merged/{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet"
     
     df = client.read_parquet(files, mergeSchema="true")
     client.write_parquet(df, file_path)
@@ -156,7 +156,8 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
 
 def prepare_data_local(file: str):
     from datetime import datetime
-    from pipeline.pl_utils import get_parquet_files
+    from math import pi
+    PI2 = 2 * pi
 
     data_path = Path.cwd() / "data"
     agg_path = data_path / "prepared_for_model"
@@ -193,8 +194,15 @@ def prepare_data_local(file: str):
         how="left"
     ).with_columns([
         pl.col("Latitude").cast(pl.Float32).alias("Latitude"),
-        pl.col("Longitude").cast(pl.Float32).alias("Longitude")
-    ]).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet"))
+        pl.col("Longitude").cast(pl.Float32).alias("Longitude"),
+        pl.col("timestamp").dt.hour().alias("hour"),
+        pl.col("timestamp").dt.weekday().alias("dow")
+    ]).with_columns([
+        (pl.col("hour") * (PI2 / 24)).sin().cast(pl.Float32).alias("hour_sin"),
+        (pl.col("hour") * (PI2 / 24)).cos().cast(pl.Float32).alias("hour_cos"),
+        (pl.col("dow") * (PI2 / 7)).sin().cast(pl.Float32).alias("dow_sin"),
+        (pl.col("dow") * (PI2 / 7)).cos().cast(pl.Float32).alias("dow_cos"),
+    ]).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet"))
 
 
 def prepare_data_minio(file: str, client: MinioSparkClient):
@@ -226,6 +234,8 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
         "PULocationID", 
         F.col("window.start").alias("timestamp"),
         "demand", "avg_distance", "avg_amount"
+    ).filter(
+        ~(F.col("PULocationID").isin([264, 265]))
     )
 
     df_final = df_agg.join(
@@ -258,4 +268,4 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
         F.cos(F.col("dow") * (PI2 / 7))
     ).dropna()
 
-    client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
+    client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet")
