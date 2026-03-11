@@ -55,8 +55,8 @@ class Pipeline(App):
             pass
 
 
-    def notify_and_log(self, message: str, title: str = "", status: str = "INFO"):
-        self.notify(message, title=title)
+    def notify_and_log(self, message: str, title: str = "", status: str = "INFO", markup: bool = True):
+        self.notify(message, title=title, markup=markup)
         self.add_log(f"{f"({title}):":28} {message}" if title else message, status)
 
 
@@ -332,7 +332,8 @@ class Pipeline(App):
                 self.notify_and_log(
                     message=f"Error while removing outliers: {str(outlier_exc)}",
                     title="Outlier Removal error",
-                    status="ERROR"
+                    status="ERROR",
+                    markup=False
                 )
 
         if merge:
@@ -369,7 +370,7 @@ class Pipeline(App):
             )
 
             try:
-                aux = single_file if single_file is not None else "a"
+                aux = single_file if single_file is not None else list(files)[0]
 
                 if file_location == "Local":
                     prepare_data_local(aux)

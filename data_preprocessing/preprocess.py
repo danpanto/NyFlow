@@ -1,3 +1,5 @@
+from concurrent.futures import Executor
+from numpy import left_shift
 import polars as pl
 from pathlib import Path
 from minio_utils import MinioSparkClient
@@ -154,10 +156,16 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
 
 def prepare_data_local(file: str):
     from datetime import datetime
+    from pipeline.pl_utils import get_parquet_files
 
     data_path = Path.cwd() / "data"
     agg_path = data_path / "prepared_for_model"
     agg_path.mkdir(exist_ok=True)
+
+    try:
+        lf_cent = pl.scan_parquet(data_path / "map_centroids.parquet")
+    except:
+        raise Exception("No file was found containing zone centroids data")
 
     pl.scan_parquet(file).sort(
         "pickup_datetime"
@@ -176,7 +184,17 @@ def prepare_data_local(file: str):
         "demand",
         "avg_distance",
         "avg_amount"
-    ).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet"))
+    ).filter(
+        ~(pl.col("PULocationID").is_in([264, 265]))
+    ).join(
+        lf_cent,
+        left_on="PULocationID",
+        right_on="locationid",
+        how="left"
+    ).with_columns([
+        pl.col("Latitude").cast(pl.Float32).alias("Latitude"),
+        pl.col("Longitude").cast(pl.Float32).alias("Longitude")
+    ]).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet"))
 
 
 def prepare_data_minio(file: str, client: MinioSparkClient):
@@ -187,7 +205,12 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     client.mkdir("prepared_for_model", exist_ok=True)
     client.connect()
 
-    df = client.read_parquet(file).groupBy(
+    try:
+        df_cent = client.read_parquet("map_centroids.parquet")
+    except:
+        raise Exception("No file was found containing zone centroids data")
+
+    df_agg = client.read_parquet(file).groupBy(
     "VendorID", 
     "PULocationID", 
         F.window("pickup_datetime", "1 hour").alias("window")
@@ -202,4 +225,10 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
         "demand", "avg_distance", "avg_amount"
     )
 
-    client.write_parquet(df, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
+    df_final = df_agg.join(
+        df_cent,
+        df_agg.PULocationID == df_cent.locationid, 
+        "left"
+    ).drop("locationid")
+
+    client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
