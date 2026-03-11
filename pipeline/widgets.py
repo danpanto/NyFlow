@@ -26,7 +26,7 @@ class OptionBox(Widget):
         self.value = options[0]
 
 
-    def render(self) -> str:
+    def render(self) -> Text:
         label = str(self.value)
         text= f"[ {label} ]"
         
@@ -66,22 +66,39 @@ class OptionBox(Widget):
 class CheckBox(Widget):
 
     can_focus = True
+    value = reactive(False, layout=True)
+
+    class Changed(Message):
+        def __init__(self, sender: "CheckBox", value: bool) -> None:
+            super().__init__()
+            self.sender = sender
+            self.value = value
+
 
     def __init__(self, is_selected: bool = False, id: str | None = None, classes: str | None = None):
         super().__init__(id=id, classes=classes)
-        self.is_selected = is_selected
+        self.value = is_selected
         self.styles.width = 3
 
+
     def render(self) -> Text:
-        return Text("[X]" if self.is_selected else "[ ]")
+        return Text("[X]" if self.value else "[ ]")
+
 
     def on_key(self, event: events.Key) -> None:
         if event.key in ("space", "enter"):
-            self.is_selected = not self.is_selected
+            self.value = not self.value
             self.refresh()
+
+
+    def watch_value(self, new_value: bool) -> None:
+        self.post_message(self.Changed(self, new_value))
+        self.refresh()
+
 
     def on_focus(self) -> None:
         self.refresh()
+
 
     def on_blur(self) -> None:
         self.refresh()
@@ -92,14 +109,14 @@ class Button(Widget):
 
     can_focus = True
 
-    def __init__(self, text: str, action: callable, id: str | None = None, classes: str | None = None):
+    def __init__(self, text: str, action, id: str | None = None, classes: str | None = None):
         super().__init__(id=id, classes=classes)
         self.text = text
         self.styles.width = 2 + len(text)
         self.action = action
 
     def render(self) -> Text:
-        return f"<{self.text}>"
+        return Text(f"<{self.text}>")
 
     def on_key(self, event: events.Key) -> None:
         if event.key in ("space", "enter"):
