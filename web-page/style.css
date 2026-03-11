@@ -22,7 +22,6 @@
 
 body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
 
-/* Navegación (La tuya con efecto cristal) */
 nav { 
     display: flex; justify-content: space-between; align-items: center; 
     padding: 15px 50px; 
@@ -33,75 +32,63 @@ nav {
 }
 [data-theme="dark"] nav { background-color: rgba(26, 26, 26, 0.8); }
 
-/* --- LOGO NYFLOW CON DEGRADADO BRILLANTE --- */
 nav .logo { 
-    font-size: 28px; /* Un poquito más grande para darle presencia */
-    font-weight: 900; /* Negrita máxima para darle "fuerza" */
+    font-size: 28px; 
+    font-weight: 900; 
     text-decoration: none; 
-    
-    /* El truco del degradado de dos colores */
     background: linear-gradient(90deg, var(--primary-color) 0%, #00b4db 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    color: transparent; /* En caso de que un navegador antiguo no lo soporte */
-    
+    color: transparent;
     transition: transform 0.3s ease;
 }
 
-/* Colores más "neón" para que destaque en el Modo Oscuro */
 [data-theme="dark"] nav .logo {
     background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-/* Efecto al pasar el ratón */
 nav .logo:hover {
-    transform: scale(1.05); /* Se hace un pelín más grande */
+    transform: scale(1.05);
 }
 
 nav ul { list-style: none; display: flex; gap: 30px; }
-/* --- ENLACES DE NAVEGACIÓN CON ANIMACIÓN --- */
 nav ul li a { 
     text-decoration: none; 
     color: var(--text-color); 
     font-weight: 500; 
-    position: relative; /* Muy importante para que la línea se posicione bien */
-    padding-bottom: 5px; /* Deja espacio para que la línea no pise el texto */
+    position: relative; 
+    padding-bottom: 5px; 
     transition: color 0.3s ease; 
 }
 
-/* Estado inicial de la línea (invisible y en el centro) */
 nav ul li a::after {
     content: '';
     position: absolute;
-    width: 0; /* Empieza sin anchura */
-    height: 2px; /* Grosor de la línea */
+    width: 0;
+    height: 2px;
     bottom: 0;
     left: 50%;
     background-color: var(--primary-color);
     transition: width 0.3s ease, left 0.3s ease;
-    transform: translateX(-50%); /* Lo centra perfectamente */
+    transform: translateX(-50%);
 }
 
-/* Al pasar el ratón: el texto cambia de color y la línea crece */
 nav ul li a:hover { 
     color: var(--primary-color); 
 }
 
 nav ul li a:hover::after {
-    width: 100%; /* La línea se expande a todo el ancho de la palabra */
+    width: 100%;
 }
 
-/* Botón Tema */
 #theme-toggle { background: var(--primary-color); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
 #theme-toggle:hover { background: var(--secondary-color); }
 
-/* Contenedores */
 .container { max-width: 1450px; margin: 0 auto; padding: 40px 20px; }
 
-/* Hero */
 .hero-modern {
     display: flex;
     align-items: center;
@@ -113,6 +100,24 @@ nav ul li a:hover::after {
 
 .hero-content {
     flex: 1;
+}
+
+.hero-content h1 {
+    font-size: 65px;
+    font-weight: 900;
+    margin-bottom: 10px;
+    letter-spacing: -1px;
+    background: linear-gradient(90deg, var(--primary-color) 0%, #00b4db 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+[data-theme="dark"] .hero-content h1 {
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .hero-image {
@@ -133,7 +138,6 @@ nav ul li a:hover::after {
     transform: translateY(-5px);
 }
 
-/* Botón Principal Azul */
 .btn-primary {
     background-color: var(--primary-color);
     color: white;
@@ -148,13 +152,11 @@ nav ul li a:hover::after {
     background-color: var(--secondary-color);
 }
 
-/* Tarjetas */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px; }
 .card { background-color: var(--card-bg); padding: 30px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; transition: 0.3s; }
 .card:hover { transform: translateY(-5px); }
 .card h3 { color: var(--primary-color); margin-bottom: 15px; }
 
-/* Footer */
 footer { text-align: center; padding: 20px; background-color: var(--nav-bg); margin-top: 40px; border-top: 1px solid var(--border-color); }
 
 
@@ -329,7 +331,6 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     letter-spacing: 1px;
 }
 
-/* Tipografía de precios */
 .pricing-card h3 {
     font-size: 24px;
     color: var(--text-color);
@@ -351,7 +352,6 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     font-weight: normal;
 }
 
-/* Lista de características */
 .pricing-features {
     list-style: none;
     flex-grow: 1;
@@ -389,9 +389,6 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     color: white;
 }
 
-/* -------------------------------------- */
-/* FOOTER PROFESIONAL                     */
-/* -------------------------------------- */
 .site-footer {
     background-color: var(--nav-bg);
     border-top: 1px solid var(--border-color);
@@ -400,7 +397,7 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
 }
 
 .footer-content {
-    max-width: 1250px; /* Alineado con el ancho de tu web */
+    max-width: 1250px; 
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -441,7 +438,7 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
 .footer-col ul li a:hover {
     color: var(--primary-color);
     opacity: 1;
-    padding-left: 5px; /* Pequeño efecto de desplazamiento al pasar el ratón */
+    padding-left: 5px; 
 }
 
 .footer-bottom {
