@@ -157,7 +157,7 @@ nav ul li a:hover::after {
 .card:hover { transform: translateY(-5px); }
 .card h3 { color: var(--primary-color); margin-bottom: 15px; }
 
-footer { text-align: center; padding: 20px; background-color: var(--nav-bg); margin-top: 40px; border-top: 1px solid var(--border-color); }
+footer { text-align: center; padding: 20px; background-color: var(--nav-bg); margin-top: 10px; border-top: 1px solid var(--border-color); }
 
 
 .iframe-container {
