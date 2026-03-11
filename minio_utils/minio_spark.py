@@ -1,5 +1,4 @@
 from pyspark.sql import SparkSession, DataFrameReader, DataFrameWriter
-from py4j.java_gateway import JavaClass, JavaObject
 from minio import Minio
 
 
@@ -16,6 +15,9 @@ class MinioSparkClient:
     def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket_name: str = "pd2",
         base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25):
 
+        from pathlib import Path
+
+
         self._bucket = bucket_name.strip('/')
         self._base_dir = base_dir.strip('/')
         
@@ -27,35 +29,56 @@ class MinioSparkClient:
         )
         
         self._connected: bool = False
+
+        JARS_DIR = Path(__file__).parent.parent / "spark_jars"
+        spark_jars = ",".join([
+            str(JARS_DIR / "hadoop-aws-3.4.1.jar"),
+            str(JARS_DIR / "bundle-2.24.6.jar"),
+            str(JARS_DIR / "wildfly-openssl-1.1.3.Final.jar"),
+        ])
+
+        # Set up spark config
         self._spark_builder = SparkSession.builder \
             .appName("MinioSparkClient") \
-            .config("spark.jars.packages", f"org.apache.hadoop:hadoop-aws:3.4.1") \
+            .config("spark.jars", spark_jars)
+
+        # Set up MinIO credentials   
+        self._spark_builder = self._spark_builder \
             .config("spark.hadoop.fs.s3a.endpoint", endpoint) \
             .config("spark.hadoop.fs.s3a.access.key", access_key) \
-            .config("spark.hadoop.fs.s3a.secret.key", secret_key) \
+            .config("spark.hadoop.fs.s3a.secret.key", secret_key)
+        
+        # Configure MinIO-Spark connection
+        self._spark_builder = self._spark_builder \
             .config("spark.hadoop.fs.s3a.path.style.access", "true") \
             .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-            .config("spark.hadoop.fs.s3a.vectored.active", "false") \
-            .config("spark.sql.parquet.enableVectorizedReader", "false") \
-            .config("spark.hadoop.parquet.hadoop.vectored.io.enabled", "false") \
-            .config("spark.hadoop.fs.s3a.connection.timeout", "600000") \
-            .config("spark.hadoop.fs.s3a.connection.establish.timeout", "600000") \
             .config("spark.hadoop.fs.s3a.socket.timeout", "600000") \
             .config("spark.hadoop.fs.s3a.paging.maximum", "1000") \
             .config("spark.hadoop.fs.s3a.threads.keepalivetime", "60") \
+            .config("spark.hadoop.fs.s3a.multipart.size", "128M") \
+            .config("spark.hadoop.fs.s3a.connection.timeout", "600000") \
+            .config("spark.hadoop.fs.s3a.connection.establish.timeout", "600000") \
             .config("spark.hadoop.fs.s3a.connection.maximum", "100") \
+            .config("spark.hadoop.fs.s3a.fast.upload", "true") \
+            .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
+            
+        # Configure spark resources
+        self._spark_builder = self._spark_builder \
+            .config("spark.storage.memoryFraction", "0.1") \
+            .config("spark.memory.offHeap.enabled", "true") \
             .config("spark.driver.memory", f"{memory}g") \
             .config("spark.executor.memory", f"{memory}g") \
-            .config("spark.memory.offHeap.enabled", "true") \
-            .config("spark.memory.offHeap.size", f"{heapsize}g") \
             .config("spark.sql.shuffle.partitions", f"{num_part}") \
+            .config("spark.memory.offHeap.size", f"{heapsize}g") \
             .config("spark.memory.fraction", "0.8") \
-            .config("spark.storage.memoryFraction", "0.1") \
             .config("spark.shuffle.compress", "true") \
             .config("spark.shuffle.spill.compress", "true") \
-            .config("spark.hadoop.fs.s3a.fast.upload", "true") \
-            .config("spark.hadoop.fs.s3a.multipart.size", "128M") \
-            # .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
+
+        # Vectorization config
+        self._spark_builder = self._spark_builder \
+            .config("spark.sql.parquet.enableVectorizedReader", "false") \
+            .config("spark.hadoop.fs.s3a.vectored.active", "false") \
+            .config("spark.hadoop.parquet.hadoop.vectored.io.enabled", "false") \
 
 
     def __check_session(self):
@@ -92,10 +115,24 @@ class MinioSparkClient:
 
 
     def connect(self):
-        if not self._connected:
+        import os, sys
+
+        if self._connected:
+            return
+
+        devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        old_stderr_fd = os.dup(2)
+        os.dup2(devnull_fd, 2)
+        os.close(devnull_fd)
+
+        try:
             self._spark: SparkSession | None = self._spark_builder.getOrCreate()
-            self._spark.sparkContext.setLogLevel("ERROR")
-            self._connected = True
+        finally:
+            os.dup2(old_stderr_fd, 2)
+            os.close(old_stderr_fd)
+
+        self._spark.sparkContext.setLogLevel("ERROR")
+        self._connected = True
 
 
     def dir_exists(self, dir_name):
