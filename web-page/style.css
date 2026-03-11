@@ -33,10 +33,66 @@ nav {
 }
 [data-theme="dark"] nav { background-color: rgba(26, 26, 26, 0.8); }
 
-nav .logo { font-size: 24px; font-weight: bold; color: var(--primary-color); text-decoration: none; }
+/* --- LOGO NYFLOW CON DEGRADADO BRILLANTE --- */
+nav .logo { 
+    font-size: 28px; /* Un poquito más grande para darle presencia */
+    font-weight: 900; /* Negrita máxima para darle "fuerza" */
+    text-decoration: none; 
+    
+    /* El truco del degradado de dos colores */
+    background: linear-gradient(90deg, var(--primary-color) 0%, #00b4db 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent; /* En caso de que un navegador antiguo no lo soporte */
+    
+    transition: transform 0.3s ease;
+}
+
+/* Colores más "neón" para que destaque en el Modo Oscuro */
+[data-theme="dark"] nav .logo {
+    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Efecto al pasar el ratón */
+nav .logo:hover {
+    transform: scale(1.05); /* Se hace un pelín más grande */
+}
+
 nav ul { list-style: none; display: flex; gap: 30px; }
-nav ul li a { text-decoration: none; color: var(--text-color); font-weight: 500; transition: color 0.3s; position: relative; }
-nav ul li a:hover { color: var(--primary-color); }
+/* --- ENLACES DE NAVEGACIÓN CON ANIMACIÓN --- */
+nav ul li a { 
+    text-decoration: none; 
+    color: var(--text-color); 
+    font-weight: 500; 
+    position: relative; /* Muy importante para que la línea se posicione bien */
+    padding-bottom: 5px; /* Deja espacio para que la línea no pise el texto */
+    transition: color 0.3s ease; 
+}
+
+/* Estado inicial de la línea (invisible y en el centro) */
+nav ul li a::after {
+    content: '';
+    position: absolute;
+    width: 0; /* Empieza sin anchura */
+    height: 2px; /* Grosor de la línea */
+    bottom: 0;
+    left: 50%;
+    background-color: var(--primary-color);
+    transition: width 0.3s ease, left 0.3s ease;
+    transform: translateX(-50%); /* Lo centra perfectamente */
+}
+
+/* Al pasar el ratón: el texto cambia de color y la línea crece */
+nav ul li a:hover { 
+    color: var(--primary-color); 
+}
+
+nav ul li a:hover::after {
+    width: 100%; /* La línea se expande a todo el ancho de la palabra */
+}
 
 /* Botón Tema */
 #theme-toggle { background: var(--primary-color); color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
