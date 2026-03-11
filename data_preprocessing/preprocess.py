@@ -201,6 +201,7 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     from datetime import datetime
     from pyspark.sql import functions as F
     from pyspark.sql.types import FloatType, IntegerType
+    from math import pi
 
     client.mkdir("prepared_for_model", exist_ok=True)
     client.connect()
@@ -209,6 +210,8 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
         df_cent = client.read_parquet("map_centroids.parquet")
     except:
         raise Exception("No file was found containing zone centroids data")
+
+    PI2 = 2 * pi
 
     df_agg = client.read_parquet(file).groupBy(
     "VendorID", 
@@ -235,6 +238,24 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     ).withColumn(
         "Longitude",
         F.col("Longitude").cast(FloatType())
-    ).drop("locationid")
+    ).drop("locationid").withColumn(
+        "hour",
+        F.hour("timestamp")
+    ).withColumn(
+        "dow",
+        F.dayofweek("timestamp")
+    ).withColumn(
+        "hour_sin",
+        F.sin(F.col("hour") * (PI2 / 24))
+    ).withColumn(
+        "hour_cos",
+        F.cos(F.col("hour") * (PI2 / 24))
+    ).withColumn(
+        "dow_sin",
+        F.sin(F.col("dow") * (PI2 / 7))
+    ).withColumn(
+        "dow_cos",
+        F.cos(F.col("dow") * (PI2 / 7))
+    ).dropna()
 
     client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%y%m%d_%H%M%S")}_agg.parquet")
