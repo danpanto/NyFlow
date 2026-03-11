@@ -51,7 +51,7 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
 
 
     res = {}
-    res_list = []
+    res_list = set()
 
     if client is None:
         data_path: Path = Path.cwd() / "data"
@@ -64,7 +64,7 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
 
             filename = str(file_path)
             if as_list:
-                res_list.append(filename)
+                res_list.add(filename)
             else:
                 add_file(res, ("data", *file_path.relative_to(data_path).parts), filename)
 
@@ -72,15 +72,25 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
         objects = client.list_objects(path="", recursive=True)
         
         for obj in objects:
-            if obj.object_name.endswith(".parquet") and not obj.object_name.endswith("snappy.parquet"):  #type:ignore
-                filename = obj.object_name.replace("cityenjoyer/", "")  #type:ignore
-                
-                if as_list:
-                    res_list.append(filename)
-                else:
-                    add_file(res, Path(obj.object_name).parts, filename)  #type:ignore
+            parts = Path(obj.object_name).parts  #type:ignore
 
-    return res_list if as_list else res
+            i = 0
+            for p in parts:
+                if p.endswith(".parquet"):
+                    break
+                i += 1
+
+            if i == len(parts):
+                continue
+
+            obj_name = '/'.join(parts[:i+1])
+  
+            if as_list:
+                res_list.add(obj_name)
+            else:
+                add_file(res, Path(obj_name).parts, obj_name.replace("cityenjoyer/", ""))  #type:ignore
+
+    return list(res_list) if as_list else res
 
 
 def remove_files(files, data_path):
