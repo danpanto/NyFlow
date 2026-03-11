@@ -125,7 +125,7 @@ class Pipeline(App):
                     else self.selected_minio_files
                 ),
                 title_text="Select files to prepare for model",
-                client=self._client
+                client=self._client if value == "Minio" else None
             ),
             handle_return if value != "Minio" else handle_minio_return
         )
