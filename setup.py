@@ -11,10 +11,10 @@ def setenv():
 
     data_dir = base_dir / "data"
     env_paths = {
-        "PD2_DATA_PATH": data_dir,
-        "PD2_CLEAN_PATH": data_dir / "clean",
-        "PD2_MERGED_PATH": data_dir / "merged",
-        "PD2_AGG_PATH": data_dir / "prepared_for_model",
+        "PD2_DATA_DIR": data_dir,
+        "PD2_CLEAN_DIR": data_dir / "clean",
+        "PD2_MERGED_DIR": data_dir / "merged",
+        "PD2_AGG_DIR": data_dir / "agg",
     }
 
     for key, path in env_paths.items():

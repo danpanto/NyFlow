@@ -1,4 +1,3 @@
-from urllib3 import filepost
 from minio_utils import MinioSparkClient
 
 
@@ -35,6 +34,7 @@ def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | 
 
 def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = False) -> dict[str, dict] | list[str] | None:
     from pathlib import Path
+    from os import environ
 
     def add_file(data: dict, parts: tuple, final_value):
         if len(parts) == 0:
@@ -54,19 +54,17 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
     res_list = set()
 
     if client is None:
-        data_path: Path = Path.cwd() / "data"
-        if not data_path.exists():
-            return None
-        
-        for file_path in data_path.rglob("*.parquet"):
-            if not file_path.is_file():
-                continue
+        data_dir: Path = Path(environ["PD2_DATA_DIR"])
+        if data_dir.exists():
+            for file_path in data_dir.rglob("*.parquet"):
+                if not file_path.is_file():
+                    continue
 
-            filename = str(file_path)
-            if as_list:
-                res_list.add(filename)
-            else:
-                add_file(res, ("data", *file_path.relative_to(data_path).parts), filename)
+                filename = str(file_path)
+                if as_list:
+                    res_list.add(filename)
+                else:
+                    add_file(res, ("data", *file_path.relative_to(data_dir).parts), filename)
 
     else:
         objects = client.list_objects(path="", recursive=True)

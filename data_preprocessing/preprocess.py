@@ -1,5 +1,3 @@
-from concurrent.futures import Executor
-from numpy import left_shift
 import polars as pl
 from pathlib import Path
 from minio_utils import MinioSparkClient
@@ -54,6 +52,8 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
 
 
 def remove_outliers_local(filepaths: set[str]):
+    from os import environ
+
     config = {
         "fare_amount":  (0, 10000),
         "tip_amount":   (0, 10000),
@@ -62,8 +62,8 @@ def remove_outliers_local(filepaths: set[str]):
     }
     clean_paths = set()
 
-    data_dir = Path.cwd() / "data"
-    clean_dir = data_dir / "clean"
+    data_dir = Path(environ["PD2_DATA_DIR"])
+    clean_dir = Path(environ["PD2_CLEAN_DIR"])
     clean_dir.mkdir(exist_ok=True, parents=True)
 
     for file in filepaths:
@@ -122,12 +122,12 @@ def remove_outliers_minio(filepaths: set[str], client: MinioSparkClient):
 
 def merge_files_local(files: set[str]):
     from datetime import datetime
+    from os import environ
 
-    data_path = Path.cwd() / "data"
-    merge_path = data_path / "merged"
-    merge_path.mkdir(exist_ok=True)
+    merge_dir = Path(environ["PD2_MERGED_DIR"])
+    merge_dir.mkdir(exist_ok=True)
 
-    file_path = Path(merge_path, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet")
+    file_path = Path(merge_dir, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet")
     if file_path.exists():
         file_path.unlink()
     
@@ -156,15 +156,17 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
 
 def prepare_data_local(file: str):
     from datetime import datetime
+    from os import environ
     from math import pi
+
     PI2 = 2 * pi
 
-    data_path = Path.cwd() / "data"
-    agg_path = data_path / "prepared_for_model"
-    agg_path.mkdir(exist_ok=True)
+    data_dir = Path(environ["PD2_DATA_DIR"])
+    agg_dir = Path(environ["PD2_AGG_DIR"])
+    agg_dir.mkdir(exist_ok=True)
 
     try:
-        lf_cent = pl.scan_parquet(data_path / "map_centroids.parquet")
+        lf_cent = pl.scan_parquet(data_dir / "map_centroids.parquet")
     except:
         raise Exception("No file was found containing zone centroids data")
 
@@ -202,7 +204,7 @@ def prepare_data_local(file: str):
         (pl.col("hour") * (PI2 / 24)).cos().cast(pl.Float32).alias("hour_cos"),
         (pl.col("dow") * (PI2 / 7)).sin().cast(pl.Float32).alias("dow_sin"),
         (pl.col("dow") * (PI2 / 7)).cos().cast(pl.Float32).alias("dow_cos"),
-    ]).sink_parquet(Path(agg_path, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet"))
+    ]).sink_parquet(Path(agg_dir, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet"))
 
 
 def prepare_data_minio(file: str, client: MinioSparkClient):
