@@ -43,7 +43,8 @@ class Pipeline(App):
             base_dir="cityenjoyer",
             memory = 8,
             heapsize = 4,
-            num_part = 100
+            num_part = 100,
+            verbose=False
         )
 
 

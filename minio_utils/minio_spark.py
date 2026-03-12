@@ -13,7 +13,7 @@ class MinioSparkClient:
     """
     
     def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket_name: str = "pd2",
-        base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25):
+        base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25, verbose: bool = False):
 
         from pathlib import Path
 
@@ -29,6 +29,7 @@ class MinioSparkClient:
         )
         
         self._connected: bool = False
+        self._verbose: bool = verbose
 
         JARS_DIR = Path(__file__).parent.parent / "spark_jars"
         spark_jars = ",".join([
@@ -115,21 +116,23 @@ class MinioSparkClient:
 
 
     def connect(self):
-        import os, sys
+        import os
 
         if self._connected:
             return
 
-        devnull_fd = os.open(os.devnull, os.O_WRONLY)
-        old_stderr_fd = os.dup(2)
-        os.dup2(devnull_fd, 2)
-        os.close(devnull_fd)
+        if not self._verbose:
+            devnull_fd = os.open(os.devnull, os.O_WRONLY)
+            old_stderr_fd = os.dup(2)
+            os.dup2(devnull_fd, 2)
+            os.close(devnull_fd)
 
         try:
             self._spark: SparkSession | None = self._spark_builder.getOrCreate()
         finally:
-            os.dup2(old_stderr_fd, 2)
-            os.close(old_stderr_fd)
+            if not self._verbose:
+                os.dup2(old_stderr_fd, 2)  #type:ignore
+                os.close(old_stderr_fd)  #type:ignore
 
         self._spark.sparkContext.setLogLevel("ERROR")
         self._connected = True
