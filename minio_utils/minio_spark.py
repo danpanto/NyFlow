@@ -34,18 +34,17 @@ class MinioSparkClient:
 
         jar_dir = Path(environ["PD2_JAR_DIR"])
         spark_jars = ",".join([
-            str(jar_dir / "hadoop-aws-3.4.1.jar"),
+            str(jar_dir / "hadoop-aws-3.3.4.jar"),
             str(jar_dir / "wildfly-openssl-1.1.3.Final.jar"),
-            str(jar_dir / "bundle-2.24.6.jar"),
+            str(jar_dir / "aws-java-sdk-bundle-1.12.262.jar"),
             str(jar_dir / "synapseml_2.12-1.1.2.jar"),
             str(jar_dir / "synapseml-core_2.12-1.1.2.jar"),
             str(jar_dir / "synapseml-deep-learning_2.12-1.1.2.jar"),
         ])
 
         # Set up spark config
-        self._spark_builder = SparkSession.builder \
-            .appName("MinioSparkClient") \
-            .config("spark.jars", spark_jars)
+        self._spark_builder = SparkSession.builder.appName("MinioSparkClient")  #type:ignore
+        self._spark_builder = self._spark_builder.config("spark.jars", spark_jars)  
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \

@@ -21,7 +21,7 @@ dependencies = [
     "plotly>=6.5.2",
     "polars>=1.37.1",
     "pyarrow>=23.0.0",
-    "pyspark>=4.1.1",
+    "pyspark==3.5.5",
     "python-dotenv>=1.2.1",
     "rich>=14.3.1",
     "s3fs>=2026.2.0",
