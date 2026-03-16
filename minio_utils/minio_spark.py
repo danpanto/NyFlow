@@ -16,6 +16,7 @@ class MinioSparkClient:
         base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25, verbose: bool = False):
 
         from pathlib import Path
+        from os import environ
 
 
         self._bucket = bucket_name.strip('/')
@@ -31,11 +32,14 @@ class MinioSparkClient:
         self._connected: bool = False
         self._verbose: bool = verbose
 
-        JARS_DIR = Path(__file__).parent.parent / "spark_jars"
+        jar_dir = Path(environ["PD2_JAR_DIR"])
         spark_jars = ",".join([
-            str(JARS_DIR / "hadoop-aws-3.4.1.jar"),
-            str(JARS_DIR / "bundle-2.24.6.jar"),
-            str(JARS_DIR / "wildfly-openssl-1.1.3.Final.jar"),
+            str(jar_dir / "hadoop-aws-3.4.1.jar"),
+            str(jar_dir / "wildfly-openssl-1.1.3.Final.jar"),
+            str(jar_dir / "bundle-2.24.6.jar"),
+            str(jar_dir / "synapseml_2.12-1.1.2.jar"),
+            str(jar_dir / "synapseml-core_2.12-1.1.2.jar"),
+            # str(jar_dir / "synapseml-deep-learning_2.12-1.1.2.jar"),
         ])
 
         # Set up spark config

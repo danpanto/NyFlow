@@ -11,6 +11,7 @@ def setenv():
 
     data_dir = base_dir / "data"
     env_paths = {
+        "PD2_JAR_DIR": jar_dir,
         "PD2_DATA_DIR": data_dir,
         "PD2_CLEAN_DIR": data_dir / "clean",
         "PD2_MERGED_DIR": data_dir / "merged",
@@ -21,10 +22,14 @@ def setenv():
         os.environ[key] = str(path)
 
     MAVEN = "https://repo1.maven.org/maven2"
+    AZURE_MAVEN = "https://mmlspark.azureedge.net/maven"
     jars = {
-        "hadoop-aws-3.4.1.jar": f"{MAVEN}/org/apache/hadoop/hadoop-aws/3.4.1/",
-        "wildfly-openssl-1.1.3.Final.jar": f"{MAVEN}/org/wildfly/openssl/wildfly-openssl/1.1.3.Final/",
-        "bundle-2.24.6.jar": f"{MAVEN}/software/amazon/awssdk/bundle/2.24.6/"
+        "hadoop-aws-3.4.1.jar":                     f"{MAVEN}/org/apache/hadoop/hadoop-aws/3.4.1/",
+        "wildfly-openssl-1.1.3.Final.jar":          f"{MAVEN}/org/wildfly/openssl/wildfly-openssl/1.1.3.Final/",
+        "bundle-2.24.6.jar":                        f"{MAVEN}/software/amazon/awssdk/bundle/2.24.6/",
+        "synapseml_2.12-1.1.2.jar":                 f"{AZURE_MAVEN}/com/microsoft/azure/synapseml_2.12/1.1.2/",
+        "synapseml-core_2.12-1.1.2.jar":            f"{MAVEN}/com/microsoft/azure/synapseml-core_2.12/1.1.2/",
+        # "synapseml-deep-learning_2.12-1.1.2.jar":   f"{MAVEN}/com/microsoft/azure/synapseml-deep-learning_2.12/1.1.2/"
     }
 
     for filename, url in jars.items():
