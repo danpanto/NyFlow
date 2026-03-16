@@ -29,7 +29,7 @@ def setenv():
         "bundle-2.24.6.jar":                        f"{MAVEN}/software/amazon/awssdk/bundle/2.24.6/",
         "synapseml_2.12-1.1.2.jar":                 f"{AZURE_MAVEN}/com/microsoft/azure/synapseml_2.12/1.1.2/",
         "synapseml-core_2.12-1.1.2.jar":            f"{MAVEN}/com/microsoft/azure/synapseml-core_2.12/1.1.2/",
-        # "synapseml-deep-learning_2.12-1.1.2.jar":   f"{MAVEN}/com/microsoft/azure/synapseml-deep-learning_2.12/1.1.2/"
+        "synapseml-deep-learning_2.12-1.1.2.jar":   f"{MAVEN}/com/microsoft/azure/synapseml-deep-learning_2.12/1.1.2/"
     }
 
     for filename, url in jars.items():

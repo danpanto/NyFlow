@@ -39,7 +39,7 @@ class MinioSparkClient:
             str(jar_dir / "bundle-2.24.6.jar"),
             str(jar_dir / "synapseml_2.12-1.1.2.jar"),
             str(jar_dir / "synapseml-core_2.12-1.1.2.jar"),
-            # str(jar_dir / "synapseml-deep-learning_2.12-1.1.2.jar"),
+            str(jar_dir / "synapseml-deep-learning_2.12-1.1.2.jar"),
         ])
 
         # Set up spark config
