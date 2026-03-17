@@ -3,12 +3,11 @@ name = "pd2"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.14.3",
     "clearml>=2.1.3",
     "dash>=3.4.0",
-    "duckdb>=1.4.3",
     "fastapi>=0.128.0",
     "geopandas>=1.1.2",
     "ipykernel>=7.1.0",
@@ -27,6 +26,7 @@ dependencies = [
     "s3fs>=2026.2.0",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
+    "synapseml==1.1.2",
     "textual>=7.4.0",
     "torch>=2.10.0",
     "tqdm>=4.67.3",
