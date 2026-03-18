@@ -22,7 +22,7 @@ UNIFIED_SCHEMA = [
     pl.col("PULocationID").cast(pl.Int16).alias("PULocationID"),
     pl.col("DOLocationID").cast(pl.Int16).alias("DOLocationID"),
 
-    pl.col("payment_type").cast(pl.Int8).alias("payment_type"),
+    pl.col("payment_type").fill_null(5).cast(pl.Int8).alias("payment_type"),
 
     _to_cents(pl.col("tip_amount"), pl.Int64).alias("tip_amount"),
     _to_cents(pl.col("tolls_amount"), pl.Int64).alias("tolls_amount"),

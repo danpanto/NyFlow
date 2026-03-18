@@ -31,6 +31,7 @@ dependencies = [
     "tqdm>=4.67.3",
     "uvicorn>=0.40.0",
     "torch>=2.10.0",
+    "ipywidgets>=8.1.8",
 ]
 
 [build-backend]
