@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NyFlow - Preguntas Frecuentes</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="icon" href="img/logo.webp">
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">NyFlow</a>
+        <ul>
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="map.html">Mapa Interactivo</a></li>
+            <li><a href="about.html">Sobre Nosotros</a></li>
+            <li><a href="faq.html">FAQs</a></li>
+        </ul>
+        <button id="theme-toggle">🌙</button>
+    </nav>
+
+    <div class="container fade-in">
+        <section style="text-align: center; margin: 40px 20px 20px; padding: 0 20px;">
+            <h1 style="font-size: 38px; margin-bottom: 15px; color: var(--primary-color);">Preguntas Frecuentes</h1>
+            <p style="font-size: 18px; color: var(--text-muted); max-width: 800px; margin: 0 auto;">Encuentra respuestas rápidas a las dudas más comunes sobre NyFlow y cómo podemos ayudarte a optimizar tus rutas en Nueva York.</p>
+        </section>
+
+        <section class="faq-section" style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿De dónde obtiene NyFlow los datos? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Utilizamos datos semi-estructurados provenientes del NYC OpenData Portal (TLC Taxi Data) y los combinamos con datos procesados en tiempo real por nuestros modelos de deep learning para predecir la demanda y los precios.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿Es necesario estar conectado a internet para usar la app? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Sí, dado que nuestras predicciones se actualizan en tiempo real según el tráfico y la demanda de la ciudad, necesitas conexión para recibir las mejores rutas.</p>
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿Cómo previenen el "Data Drift" en sus modelos? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Entrenamos continuamente nuestra Inteligencia Artificial utilizando los nuevos datos que entran mensualmente al portal de NYC, ajustando los pesos del modelo para que las predicciones sigan siendo precisas a lo largo del tiempo.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿Cuánto tiempo tardaré en rentabilizar mi suscripción? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Gracias a la reducción drástica de los kilómetros recorridos en vacío (<em>deadheading</em>) y al guiado constante hacia zonas de alta demanda, nuestros usuarios con planes premium estiman recuperar el coste total de la inversión en menos de 2 horas de trabajo efectivo.</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿NyFlow funciona solo para Yellow Cabs o también para Uber/Lyft? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Nuestra plataforma está diseñada para optimizar las rutas de <strong>cualquier conductor profesional de transporte en Nueva York</strong>. Al analizar los macro-datos de la TLC, las predicciones de demanda y flujo de pasajeros son útiles tanto si conduces un taxi tradicional como un vehículo de VTC (Uber, Lyft, etc.).</p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    ¿Qué significa que usáis el "Efecto Caja de Cristal"? <i class="ph ph-caret-down"></i>
+                </button>
+                <div class="faq-answer">
+                    <p>Es nuestra filosofía de transparencia total. A diferencia de otros algoritmos opacos, nosotros ofrecemos una "simetría de información". Te damos acceso visual a los mismos macro-datos que tiene la ciudad (precio medio, propinas, tiempos) para que no solo sigas una ruta a ciegas, sino que entiendas <strong>por qué</strong> la IA te recomienda ir allí.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr style="border: none; border-top: 1px solid var(--border-color); max-width: 800px; margin: 60px auto;">
+
+        <section class="contact-section" id="contacto" style="max-width: 600px; margin: 0 auto 60px;">
+            <h2 class="section-title" style="text-align: center;">¿Aún tienes dudas?</h2>
+            <p style="text-align: center; margin-bottom: 30px; color: var(--text-muted);">Rellena el formulario y el equipo te responderá lo antes posible.</p>
+
+            <form action="https://formspree.io/f/xpqykwpa" method="POST" class="contact-form" id="nyflow-contact-form">
+                <div class="form-group">
+                    <label for="name">Nombre</label>
+                    <input type="text" id="name" name="name" required placeholder="Tu nombre">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Correo Electrónico</label>
+                    <input type="email" id="email" name="email" required placeholder="tu@correo.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Mensaje</label>
+                    <textarea id="message" name="message" rows="5" required placeholder="Escribe tu duda o sugerencia aquí..."></textarea>
+                </div>
+                
+                <button type="submit" id="submit-btn" class="btn-primary" style="width: 100%; border: none; cursor: pointer; padding: 15px; font-size: 16px; border-radius: 8px;">Enviar Mensaje</button>
+                
+                <p id="form-status" style="text-align: center; margin-top: 15px; font-weight: bold; display: none;"></p>
+            </form>
+        </section>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-col">
+                <h3 style="font-size: 24px;">NyFlow</h3>
+                <p>Optimizando las rutas de transporte en Nueva York con inteligencia artificial.</p>
+            </div>
+            
+            <div class="footer-col">
+                <h3>Enlaces Rápidos</h3>
+                <ul>
+                    <li><a href="index.html">Inicio</a></li>
+                    <li><a href="map.html">Mapa Interactivo</a></li>
+                    <li><a href="about.html">Sobre Nosotros</a></li>
+                    <li><a href="faq.html">Preguntas Frecuentes</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-col">
+                <h3>Contacto</h3>
+                <p>📧 c_enjoyers@outlook.com</p>
+                <p>📍 Madrid, España</p>
+                <p>📱 +34 711 11 11 11</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 NyFlow. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

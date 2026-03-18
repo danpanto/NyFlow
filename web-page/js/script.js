@@ -83,22 +83,18 @@ faders.forEach(fader => {
     appearOnScroll.observe(fader);
 });
 
-// --- LÓGICA DEL FORMULARIO DE CONTACTO ---
 const contactForm = document.getElementById('nyflow-contact-form');
 const formStatus = document.getElementById('form-status');
 
 if (contactForm) {
     contactForm.addEventListener('submit', async function(event) {
-        // 1. Evitamos que la página se recargue o cambie a Formspree
         event.preventDefault(); 
         
-        // 2. Cambiamos el texto del botón mientras carga
         const submitBtn = document.getElementById('submit-btn');
         const originalBtnText = submitBtn.innerText;
         submitBtn.innerText = "Enviando...";
         submitBtn.disabled = true;
 
-        // 3. Recogemos los datos y los enviamos
         const formData = new FormData(contactForm);
         const endpointUrl = contactForm.action;
 
@@ -111,24 +107,39 @@ if (contactForm) {
                 }
             });
 
-            formStatus.style.display = "block"; // Mostramos el mensaje oculto
+            formStatus.style.display = "block"; 
 
             if (response.ok) {
                 formStatus.innerHTML = "✅ ¡Mensaje enviado con éxito! Te responderemos pronto.";
-                formStatus.style.color = "#28a745"; // Verde
-                contactForm.reset(); // Vaciamos los campos
+                formStatus.style.color = "#28a745"; 
+                contactForm.reset(); 
             } else {
                 formStatus.innerHTML = "❌ Hubo un problema al enviar. Inténtalo de nuevo.";
-                formStatus.style.color = "#dc3545"; // Rojo
+                formStatus.style.color = "#dc3545";
             }
         } catch (error) {
             formStatus.style.display = "block";
             formStatus.innerHTML = "❌ Error de red. Comprueba tu conexión.";
             formStatus.style.color = "#dc3545";
         } finally {
-            // Restauramos el botón
             submitBtn.innerText = originalBtnText;
             submitBtn.disabled = false;
         }
     });
 }
+
+const faqQuestions = document.querySelectorAll('.faq-question');
+
+faqQuestions.forEach(question => {
+    question.addEventListener('click', () => {
+        question.classList.toggle('active');
+        
+        const answer = question.nextElementSibling;
+        
+        if (question.classList.contains('active')) {
+            answer.style.maxHeight = answer.scrollHeight + "px";
+        } else {
+            answer.style.maxHeight = null;
+        }
+    });
+});

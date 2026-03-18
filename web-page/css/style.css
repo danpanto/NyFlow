@@ -769,59 +769,57 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
     text-align: center;
 }
 
-/* Responsividad: En móviles (pantallas menores de 768px), se pone uno debajo del otro */
-@media (max-width: 768px) {
-    .split-grid {
-        grid-template-columns: 1fr;
-        gap: 30px;
-    }
+/* --- ESTILOS DE PREGUNTAS FRECUENTES (FAQS) --- */
+.faq-item {
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    overflow: hidden;
+    transition: all 0.3s ease;
 }
 
-/* --- ADAPTACIÓN PARA MÓVILES --- */
-@media (max-width: 768px) {
-    nav {
-        flex-direction: column;
-        gap: 15px;
-        padding: 20px;
-    }
-    
-    nav ul {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-    }
-    
-    .hero-modern {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .hero-image {
-        justify-content: center;
-        margin-top: 30px;
-    }
-    
-    .hero-content h1 {
-        font-size: 45px; 
-    }
-
-    .iframe-container {
-        height: 60vh;
-        min-height: 400px;
-    }
+.faq-question {
+    width: 100%;
+    text-align: left;
+    padding: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s;
 }
 
-@media (max-width: 768px) {
-    .map-page-layout {
-        flex-direction: column;
-        height: auto;
-    }
-    .map-sidebar {
-        width: 100%;
-        max-height: 300px;
-    }
-    .map-content {
-        height: 500px;
-    }
+.faq-question:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="dark"] .faq-question:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.faq-question i {
+    transition: transform 0.3s ease;
+    color: var(--primary-color);
+}
+
+.faq-question.active i {
+    transform: rotate(180deg);
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s ease;
+    padding: 0 20px;
+    color: var(--text-muted);
+}
+
+.faq-answer p {
+    margin: 0 0 20px 0;
 }

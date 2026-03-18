@@ -68,12 +68,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Si es iframe no necesitamos el botón
+    // Si es iframe no necesitamos los menús de la app original
     if (isIframe()) {
+        // 1. Ocultar el botón de tema de forma segura
         const boton = document.querySelector('theme-btn');
-        boton.style.display = "none";
-    }else{
-        console.log("falso")
+        if (boton) {
+            boton.style.display = "none";
+        }
+        
+        // 2. Ocultar el menú inferior rebelde
+        const bottomDrawer = document.querySelector('bottom-drawer');
+        if (bottomDrawer) {
+            bottomDrawer.style.display = "none";
+        }
+
+        // 3. (Opcional) Si también te sale un menú derecho y quieres quitarlo:
+        const rightDrawer = document.querySelector('right-drawer');
+        if (rightDrawer) {
+            rightDrawer.style.display = "none";
+        }
+    } else {
+        console.log("falso");
     }
 
     // para el iframe de la página del proyecto
@@ -85,10 +100,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const { action, value } = data || {};
 
-        console.log("Message received from parent:", action, value);
-
         if (action === 'data-theme' && value) {
-            themeService.theme = value;
+            themeService.setTheme(value);
+        } else if (action === 'change-layer' && value) {
+            const hiddenBtn = document.querySelector(`layer-selector button[layer="${value}"]`);
+            if (hiddenBtn) {
+                hiddenBtn.click();
+            } else {
+                console.error("No se encontró la capa oculta:", value);
+            }
         }
     });
 
