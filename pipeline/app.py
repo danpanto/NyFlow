@@ -168,6 +168,7 @@ class Pipeline(App):
         from data_preprocessing.preprocess import transform_columns
 
         dl_mode = self.query_one("#dl_mode_selector").value  #type:ignore
+        dl_location = self.query_one("#dl_location_selector").value  #type:ignore
         transf = self.query_one("#tf_selector").value  #type:ignore
         vendor_mode = self.query_one("#dl_selector").value  #type:ignore
         date_mode = self.query_one("#date_selector").value  #type:ignore
@@ -261,7 +262,7 @@ class Pipeline(App):
                     message="Please wait...",
                     title="Saving data to file"
                 )
-                save_lazy_frame(lf, *date, group[1])  #type:ignore
+                save_lazy_frame(lf, date[0], date[1], group[1], self._client if dl_location != "Local" else None)
                 self.notify_and_log(
                     message=f"File saved correctly! {list(group)}",
                     title="File save successful",
@@ -417,13 +418,20 @@ class Pipeline(App):
                                 )
 
                             with Horizontal(classes="optbox-row"):
+                                yield Label("Save location:")
+                                yield OptionBox(
+                                    ["Local", "Minio"],
+                                    id="dl_location_selector",
+                                    classes="focuseable"
+                                )
+
+                            with Horizontal(classes="optbox-row"):
                                 yield Label("Apply column transformations")
                                 yield CheckBox(
                                     is_selected=True,
                                     id="tf_selector",
                                     classes="focuseable"
                                 )
-                                # yield Label("Apply column transformations")
 
                             with Horizontal(classes="optbox-row"):
                                 yield Label("Vendors:")
