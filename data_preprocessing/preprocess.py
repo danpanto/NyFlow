@@ -105,8 +105,6 @@ def remove_outliers_minio(filepaths: set[str], client: MinioSparkClient):
     }
     clean_paths = set()
 
-    client.connect()
-
     client.mkdir("clean", exist_ok=True)
 
     for file in filepaths:
@@ -156,7 +154,6 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
     from datetime import datetime
 
     client.mkdir("merged", exist_ok=True)
-    client.connect()
 
     file_path = f"merged/{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet"
     
@@ -226,7 +223,6 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     from math import pi
 
     client.mkdir("prepared_for_model", exist_ok=True)
-    client.connect()
 
     try:
         df_cent = client.read_parquet("map_centroids.parquet")

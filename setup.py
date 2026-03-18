@@ -27,9 +27,6 @@ def setenv():
         "hadoop-aws-3.3.4.jar":                     f"{MAVEN}/org/apache/hadoop/hadoop-aws/3.3.4/",
         "aws-java-sdk-bundle-1.12.262.jar":         f"{MAVEN}/com/amazonaws/aws-java-sdk-bundle/1.12.262/",
         "wildfly-openssl-1.1.3.Final.jar":          f"{MAVEN}/org/wildfly/openssl/wildfly-openssl/1.1.3.Final/",
-        "synapseml_2.12-1.1.2.jar":                 f"{AZURE_MAVEN}/synapseml_2.12/1.1.2/",
-        "synapseml-core_2.12-1.1.2.jar":            f"{AZURE_MAVEN}/synapseml-core_2.12/1.1.2/",
-        "synapseml-deep-learning_2.12-1.1.2.jar":   f"{AZURE_MAVEN}/synapseml-deep-learning_2.12/1.1.2/",
     }
 
     for filename, url in jars.items():

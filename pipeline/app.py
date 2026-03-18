@@ -301,6 +301,14 @@ class Pipeline(App):
                 but no merge requested. Please schedule merge or select one file only.")
             return
 
+        if file_location == "Minio" and not self._client.is_connected():
+            self._client.connect()
+            self.notify_and_log(
+                message="Client established connection with MinIO correctly",
+                title="Connection successful",
+                status="SUCCESS"
+            )
+
         # ------------------------------------- #
         # ----- Beginning of the pipeline ----- #
         # ------------------------------------- #
