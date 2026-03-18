@@ -33,18 +33,14 @@ class MinioSparkClient:
         self._verbose: bool = verbose
 
         jar_dir = Path(environ["PD2_JAR_DIR"])
-        spark_jars = ",".join([
-            str(jar_dir / "hadoop-aws-3.3.4.jar"),
-            str(jar_dir / "wildfly-openssl-1.1.3.Final.jar"),
-            str(jar_dir / "aws-java-sdk-bundle-1.12.262.jar"),
-            str(jar_dir / "synapseml_2.12-1.1.2.jar"),
-            str(jar_dir / "synapseml-core_2.12-1.1.2.jar"),
-            str(jar_dir / "synapseml-deep-learning_2.12-1.1.2.jar"),
-        ])
+        local_jars = ",".join([str(jar) for jar in jar_dir.iterdir()])
 
         # Set up spark config
         self._spark_builder = SparkSession.builder.appName("MinioSparkClient")  #type:ignore
-        self._spark_builder = self._spark_builder.config("spark.jars", spark_jars)  
+        self._spark_builder = self._spark_builder \
+            .config("spark.jars", local_jars) \
+            .config("spark.jars.packages", "com.microsoft.azure:synapseml_2.12:1.1.2") \
+            .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven")
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \
@@ -83,6 +79,10 @@ class MinioSparkClient:
             .config("spark.sql.parquet.enableVectorizedReader", "false") \
             .config("spark.hadoop.fs.s3a.vectored.active", "false") \
             .config("spark.hadoop.parquet.hadoop.vectored.io.enabled", "false") \
+
+
+    def is_connected(self):
+        return self._connected
 
 
     def __check_session(self):

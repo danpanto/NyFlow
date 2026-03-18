@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,9 +11,14 @@
 <body>
     <nav>
         <a href="index.html" class="logo">NyFlow</a>
-        <ul>
+        
+        <div class="menu-toggle" id="mobile-menu">
+            <i class="ph ph-list"></i>
+        </div>
+
+        <ul class="nav-links">
             <li><a href="index.html">Inicio</a></li>
-            <li><a href="map.html">Mapa Predictivo</a></li>
+            <li><a href="map.html">Mapa Interactivo</a></li>
             <li><a href="about.html">Sobre Nosotros</a></li>
             <li><a href="faq.html">FAQs</a></li>
         </ul>
@@ -57,6 +63,123 @@
             </div>
         </div>
     </div>
+
+    <section class="data-flow-section fade-in">
+        <h2 style="text-align: center; margin: 80px 0 20px; font-size: 32px; color: var(--primary-color);">Cómo funciona nuestra IA</h2>
+        <p style="text-align: center; max-width: 800px; margin: 0 auto 40px; color: var(--text-color); opacity: 0.9;">
+            NyFlow transforma millones de registros históricos en rutas rentables a través de un proceso lineal y estructurado en tres fases.
+        </p>
+        
+        <div class="data-flow-grid">
+            <div class="data-card">
+                <div class="icon-box" style="margin-bottom: 20px;">
+                    <i class="ph ph-database" style="font-size: 50px; color: var(--primary-color);"></i>
+                </div>
+                <h3>1. NYC OpenData</h3>
+                <p class="tag" style="background-color: var(--secondary-color);">Materia Prima</p>
+                <p>Extraemos volúmenes masivos de datos históricos de la TLC de Nueva York, analizando millones de viajes para entender a fondo los patrones de movilidad de la ciudad.</p>
+            </div>
+            
+            <div class="flow-arrow">
+                <i class="ph ph-arrow-right" style="font-size: 40px; color: var(--primary-color); opacity: 0.5;"></i>
+            </div>
+
+            <div class="data-card">
+                <div class="icon-box" style="margin-bottom: 20px;">
+                    <i class="ph ph-brain" style="font-size: 50px; color: var(--primary-color);"></i>
+                </div>
+                <h3>2. Entrenamiento IA</h3>
+                <p class="tag" style="background-color: #6f42c1;">Deep Learning</p>
+                <p>Nuestras redes neuronales procesan esta información, aprendiendo las tendencias y evitando el <em>data drift</em> mediante reentrenamientos periódicos con los datos más recientes.</p>
+            </div>
+
+            <div class="flow-arrow">
+                <i class="ph ph-arrow-right" style="font-size: 40px; color: var(--primary-color); opacity: 0.5;"></i>
+            </div>
+
+            <div class="data-card">
+                <div class="icon-box" style="margin-bottom: 20px;">
+                    <i class="ph ph-taxi" style="font-size: 50px; color: var(--primary-color);"></i>
+                </div>
+                <h3>3. Predicciones</h3>
+                <p class="tag" style="background-color: #28a745;">Rutas Óptimas</p>
+                <p>El modelo genera pronósticos precisos que se envían directamente a la pantalla del conductor, mostrándole las zonas de alta demanda para minimizar sus kilómetros en vacío.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-stack-section fade-in" style="margin: 80px 0 60px; padding: 0 20px;">
+        <h2 style="text-align: center; margin-bottom: 20px; font-size: 32px; color: var(--primary-color);">Tecnologías que utilizamos</h2>
+        <p style="text-align: center; max-width: 800px; margin: 0 auto 50px; color: var(--text-color); opacity: 0.9;">
+            NyFlow está construido combinando las herramientas más sólidas de análisis de datos y desarrollo para garantizar rendimiento en tiempo real.
+        </p>
+        
+        <div class="tech-grid">
+            <div class="tech-card">
+                <i class="ph ph-file-code" style="font-size: 45px; color: #e34f26;"></i>
+                <h4>Frontend Web</h4>
+                <p>HTML, CSS y JS</p>
+            </div>
+            
+            <div class="tech-card">
+                <i class="ph ph-terminal-window" style="font-size: 45px; color: #3776ab;"></i>
+                <h4>Backend</h4>
+                <p>Python & FastAPI</p>
+            </div>
+            
+            <div class="tech-card">
+                <i class="ph ph-brain" style="font-size: 45px; color: #ff9900;"></i>
+                <h4>Machine Learning</h4>
+                <p>Modelos Predictivos</p>
+            </div>
+            
+            <div class="tech-card">
+                <i class="ph ph-database" style="font-size: 45px; color: #336791;"></i>
+                <h4>Materia Prima</h4>
+                <p>NYC OpenData</p>
+            </div>
+            
+            <div class="tech-card">
+                <i class="ph ph-device-mobile" style="font-size: 45px; color: #02569b;"></i>
+                <h4>Aplicación Móvil</h4>
+                <p>Flutter</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="timeline-section fade-in">
+        <h2 style="text-align: center; margin: 60px 0 30px; font-size: 32px; color: var(--primary-color);">La Evolución de NyFlow</h2>
+        <div class="timeline">
+            <div class="timeline-item left">
+                <div class="timeline-content">
+                    <h3>Gestación de la Idea</h3>
+                    <p class="date">Enero 2026</p>
+                    <p>Identificamos el problema del "deadheading" en los taxistas de Nueva York y comenzamos a plantear una solución basada en datos masivos del TLC.</p>
+                </div>
+            </div>
+            <div class="timeline-item right">
+                <div class="timeline-content">
+                    <h3>Desarrollo del Modelo IA</h3>
+                    <p class="date">Marzo 2026</p>
+                    <p>Entrenamiento de nuestras redes neuronales para predecir la demanda y optimizar rutas en tiempo real utilizando el histórico de viajes.</p>
+                </div>
+            </div>
+            <div class="timeline-item left">
+                <div class="timeline-content">
+                    <h3>Lanzamiento del Visor Web</h3>
+                    <p class="date">Abril 2026</p>
+                    <p>Despliegue de nuestra primera demo interactiva. Un mapa predictivo capaz de mostrar zonas calientes y rentabilidad esperada.</p>
+                </div>
+            </div>
+            <div class="timeline-item right">
+                <div class="timeline-content">
+                    <h3>App Móvil Nativa</h3>
+                    <p class="date">Abril 2026</p>
+                    <p>Migración a una aplicación móvil para que los conductores la lleven directamente en su salpicadero.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <footer class="site-footer">
         <div class="footer-content">
