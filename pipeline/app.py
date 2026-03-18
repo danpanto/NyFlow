@@ -249,7 +249,7 @@ class Pipeline(App):
                         message="Please wait...",
                         title="Transforming columns"
                     )
-                    lf = transform_columns(lf, group[1])
+                    lf = transform_columns(lf, group[1], group[0])
                     self.notify_and_log(
                         message=f"Data transformed correctly {list(group)}!",
                         title="Transformation successful",
