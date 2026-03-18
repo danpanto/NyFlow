@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NyFlow - Inicio</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚕</text></svg>">
+    <link rel="icon" href="img/logo.webp">
 </head>
 <body>
     <nav>
@@ -106,20 +106,52 @@
                     </ul>
                 </div>
             </div>
+        </section>
 
-            <div class="fade-in" style="text-align: center; margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border-color);">
-                <h2 style="font-size: 28px; margin-bottom: 15px;">¿Prefieres llevar NyFlow en el bolsillo?</h2>
-                <p style="color: var(--text-muted); font-size: 18px; margin-bottom: 25px;">Descarga nuestra aplicación móvil y accede a las predicciones desde cualquier lugar.</p>
+        <section class="split-section fade-in" id="contacto-app" style="margin-top: 60px; padding: 0 20px;">
+            <div class="split-grid">
                 
-                <a href="javascript:void(0)" download class="btn-primary" style="display: inline-flex; align-items: center; gap: 12px; padding: 16px 35px; font-size: 18px; font-weight: bold; text-decoration: none; border-radius: 50px; cursor: default; opacity: 0.9;">
-                    <i class="ph ph-device-mobile" style="font-size: 26px;"></i> Descargar la app
-                </a>
-                
-                <p style="margin-top: 15px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">Disponible para iOS y Android</p>
+                <div class="app-promo-container">
+                    <h2 style="font-size: 28px; margin-bottom: 15px;">¿Prefieres llevar NyFlow en el bolsillo?</h2>
+                    <p style="color: var(--text-muted); font-size: 18px; margin-bottom: 35px;">Descarga nuestra aplicación móvil y accede a las predicciones desde cualquier lugar.</p>
+                    
+                    <a href="javascript:void(0)" download class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 35px; font-size: 18px; font-weight: bold; text-decoration: none; border-radius: 50px; cursor: default; opacity: 0.9;">
+                        <i class="ph ph-device-mobile" style="font-size: 26px;"></i> Descargar la app
+                    </a>
+                    
+                    <p style="margin-top: 20px; font-size: 13px; color: var(--text-muted); opacity: 0.7;">Disponible para iOS y Android</p>
+                </div>
+
+                <div class="contact-container" style="margin: 0; width: 100%;">
+                    <h2 class="section-title" style="text-align: center;">¿Tienes alguna duda?</h2>
+                    <p style="text-align: center; margin-bottom: 30px; color: var(--text-muted);">Escríbenos y el equipo de NyFlow te responderá lo antes posible.</p>
+
+                    <form action="https://formspree.io/f/xpqykwpa" method="POST" class="contact-form" id="nyflow-contact-form">
+                        <div class="form-group">
+                            <label for="name">Nombre</label>
+                            <input type="text" id="name" name="name" required placeholder="Tu nombre">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Correo Electrónico</label>
+                            <input type="email" id="email" name="email" required placeholder="tu@correo.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Mensaje</label>
+                            <textarea id="message" name="message" rows="5" required placeholder="Escribe tu duda o sugerencia aquí..."></textarea>
+                        </div>
+                        
+                        <button type="submit" id="submit-btn" class="btn-primary" style="width: 100%; border: none; cursor: pointer; padding: 15px; font-size: 16px; border-radius: 8px;">Enviar Mensaje</button>
+                        
+                        <p id="form-status" style="text-align: center; margin-top: 15px; font-weight: bold; display: none;"></p>
+                    </form>
+                </div>
+
             </div>
         </section>
 
-    </div>
+    </div>    
 
     <footer class="site-footer">
         <div class="footer-content">
@@ -150,6 +182,6 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>
