@@ -1,5 +1,6 @@
 import polars as pl
 from pathlib import Path
+from minio_utils import MinioSparkClient
 
 
 def get_lazy_frame(date: str, vendor: str) -> tuple:
@@ -44,7 +45,7 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
     return (pl.read_parquet(io.BytesIO(file_data)).lazy(), file_url)
 
 
-def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Path:
+def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str, client: MinioSparkClient = None) -> str:
     """
     Save data to a local file on disk
 
@@ -66,7 +67,16 @@ def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str) -> Pat
     month_dir.mkdir(parents=True, exist_ok=True)
 
     filepath = Path(month_dir, f"{vendor}.parquet")
-
     lf.sink_parquet(filepath)
 
-    return filepath
+    if client is None:
+        return str(filepath)
+
+    minio_path = f"data/{year}_{month}_{vendor}.parquet"
+    client.upload_file(
+        local_path=str(filepath),
+        minio_path=minio_path,
+    )
+    filepath.unlink()
+
+    return minio_path

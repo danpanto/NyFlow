@@ -177,6 +177,18 @@ class MinioSparkClient:
         )
 
 
+    def upload_file(self, local_path, minio_path):
+        res = f"{self._base_dir}/{minio_path.strip('/')}"
+
+        self._minio.fput_object(
+            bucket_name=self._bucket,
+            object_name=res,
+            file_path=local_path
+        )
+
+        return res
+
+
     def read_parquet(self, path, **options):
         return self.__read_file(self._spark.read, "parquet", path, **options)  #type:ignore
 
