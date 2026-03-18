@@ -1,15 +1,17 @@
 import polars as pl
 from pathlib import Path
 from minio_utils import MinioSparkClient
+from datetime import datetime
 
 
-def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
+def transform_columns(lf: pl.LazyFrame, vendor: str, date : str) -> pl.LazyFrame:
     """
     Apply column transformations to the data
 
     Args:
         lf          (pl.LazyFrame): Data as polars' lazy frame
         vendor      (str):          Vendor type
+        date        (str):          Year and month of the data
 
     Returns:
         out         (pl.LazyFrame): Returns the new transformed data
@@ -48,6 +50,16 @@ def transform_columns(lf: pl.LazyFrame, vendor: str) -> pl.LazyFrame:
         for tr_fun in params["apply"]:
             lf = tr_fun(lf)
     
+    # Delete the "future data"
+    start_date = datetime.strptime(date, "%Y-%m")
+    
+    end_date = pl.lit(start_date).dt.offset_by("1mo")
+    
+    lf = lf.filter(
+        (pl.col("pickup_datetime") >= start_date) & 
+        (pl.col("pickup_datetime") < end_date)
+    )
+
     return lf.select(UNIFIED_SCHEMA)
 
 
