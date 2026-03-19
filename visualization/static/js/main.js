@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { action, value } = data || {};
 
         if (action === 'data-theme' && value) {
-            themeService.setTheme(value);
+            themeService.theme = value;
         } else if (action === 'change-layer' && value) {
             const hiddenBtn = document.querySelector(`layer-selector button[layer="${value}"]`);
             if (hiddenBtn) {
