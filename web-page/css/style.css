@@ -54,6 +54,7 @@ nav .logo {
 [data-theme="dark"] nav .logo {
     background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -123,6 +124,7 @@ nav ul li a:hover::after {
 [data-theme="dark"] .hero-content h1 {
     background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -475,6 +477,7 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
 [data-theme="dark"] .about-hero h1 {
     background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -679,6 +682,7 @@ footer { text-align: center; padding: 20px; background-color: var(--nav-bg); mar
 [data-theme="dark"] .text-gradient {
     background: linear-gradient(135deg, #4a90e2 0%, #00f2fe 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

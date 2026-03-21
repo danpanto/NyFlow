@@ -10,7 +10,7 @@ if (currentTheme) {
 
     setTimeout(function(){
         let theme = document.documentElement.getAttribute('data-theme');
-        const iframe = document.querySelector('#mapa iframe') || document.getElementById('map-iframe');
+        const iframe = document.querySelector('#map-iframe') || document.getElementById('map-iframe');
         if (iframe) {
             iframe.contentWindow.postMessage({ action: 'data-theme', value: theme }, '*');
         }
