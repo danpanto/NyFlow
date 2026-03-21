@@ -40,7 +40,9 @@ class MinioSparkClient:
         self._spark_builder = self._spark_builder \
             .config("spark.jars", local_jars) \
             .config("spark.jars.packages", "com.microsoft.azure:synapseml_2.12:1.1.2") \
-            .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven")
+            .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven") \
+            .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
+            .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true") \
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \
