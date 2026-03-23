@@ -13,7 +13,7 @@ class MinioSparkClient:
     """
     
     def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket_name: str = "pd2",
-        base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25, verbose: bool = False):
+        base_dir: str = "cityenjoyer", memory: int = 2, heapsize: int = 2, num_part: int = 25, inference: bool = False ,verbose: bool = False):
 
         from pathlib import Path
         from os import environ
@@ -41,8 +41,12 @@ class MinioSparkClient:
             .config("spark.jars", local_jars) \
             .config("spark.jars.packages", "com.microsoft.azure:synapseml_2.12:1.1.2") \
             .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven") \
-            .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
-            .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true") \
+            .config("spark.sql.session.timeZone", "UTC") 
+            
+        if inference:
+            self._spark_builder = self._spark_builder \
+                .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
+                .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true") \
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \

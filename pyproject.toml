@@ -35,6 +35,9 @@ dependencies = [
     "pyproj>=3.7.2",
     "lightgbm>=4.6.0",
     "optuna>=4.8.0",
+    "darts>=0.43.0",
+    "pytorch-lightning>=2.6.1",
+    "tensorboard>=2.20.0",
 ]
 
 [build-backend]

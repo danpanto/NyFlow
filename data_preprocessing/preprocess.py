@@ -222,60 +222,63 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
     from pyspark.sql.types import FloatType, IntegerType
     from math import pi
 
-    client.mkdir("prepared_for_model", exist_ok=True)
-
     try:
-        df_cent = client.read_parquet("map_centroids.parquet")
-    except:
-        raise Exception("No file was found containing zone centroids data")
+        client.mkdir("prepared_for_model", exist_ok=True)
 
-    PI2 = 2 * pi
+        try:
+            df_cent = client.read_parquet("map_centroids.parquet")
+        except:
+            raise Exception("No file was found containing zone centroids data")
 
-    df_agg = client.read_parquet(file).groupBy(
-    "VendorID", 
-    "PULocationID", 
-        F.window("pickup_datetime", "1 hour").alias("window")
-    ).agg(
-        F.count("*").cast(IntegerType()).alias("demand"),
-        F.avg("trip_distance").cast(FloatType()).alias("avg_distance"),
-        F.avg("total_amount").cast(FloatType()).alias("avg_amount")
-    ).select(
+        PI2 = 2 * pi
+
+        df_agg = client.read_parquet(file).groupBy(
         "VendorID", 
         "PULocationID", 
-        F.col("window.start").alias("timestamp"),
-        "demand", "avg_distance", "avg_amount"
-    ).filter(
-        ~(F.col("PULocationID").isin([264, 265]))
-    )
+            F.window("pickup_datetime", "1 hour").alias("window")
+        ).agg(
+            F.count("*").cast(IntegerType()).alias("demand"),
+            F.avg("trip_distance").cast(FloatType()).alias("avg_distance"),
+            F.avg("total_amount").cast(FloatType()).alias("avg_amount")
+        ).select(
+            "VendorID", 
+            "PULocationID", 
+            F.col("window.start").alias("timestamp"),
+            "demand", "avg_distance", "avg_amount"
+        ).filter(
+            ~(F.col("PULocationID").isin([264, 265]))
+        )
 
-    df_final = df_agg.join(
-        other=df_cent,
-        on=df_agg.PULocationID == df_cent.locationid, 
-        how="left"
-    ).withColumn(
-        "Latitude",
-        F.col("Latitude").cast(FloatType())
-    ).withColumn(
-        "Longitude",
-        F.col("Longitude").cast(FloatType())
-    ).drop("locationid").withColumn(
-        "hour",
-        F.hour("timestamp")
-    ).withColumn(
-        "dow",
-        F.dayofweek("timestamp")
-    ).withColumn(
-        "hour_sin",
-        F.sin(F.col("hour") * (PI2 / 24))
-    ).withColumn(
-        "hour_cos",
-        F.cos(F.col("hour") * (PI2 / 24))
-    ).withColumn(
-        "dow_sin",
-        F.sin(F.col("dow") * (PI2 / 7))
-    ).withColumn(
-        "dow_cos",
-        F.cos(F.col("dow") * (PI2 / 7))
-    ).dropna()
+        df_final = df_agg.join(
+            other=df_cent,
+            on=df_agg.PULocationID == df_cent.locationid, 
+            how="left"
+        ).withColumn(
+            "Latitude",
+            F.col("Latitude").cast(FloatType())
+        ).withColumn(
+            "Longitude",
+            F.col("Longitude").cast(FloatType())
+        ).drop("locationid").withColumn(
+            "hour",
+            F.hour("timestamp")
+        ).withColumn(
+            "dow",
+            F.dayofweek("timestamp")
+        ).withColumn(
+            "hour_sin",
+            F.sin(F.col("hour") * (PI2 / 24))
+        ).withColumn(
+            "hour_cos",
+            F.cos(F.col("hour") * (PI2 / 24))
+        ).withColumn(
+            "dow_sin",
+            F.sin(F.col("dow") * (PI2 / 7))
+        ).withColumn(
+            "dow_cos",
+            F.cos(F.col("dow") * (PI2 / 7))
+        ).dropna()
 
-    client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet")
+        client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet")
+    except:
+        raise Exception("Fatal error while aggregating data")
