@@ -1,0 +1,45 @@
+decoder_output_dim: 16
+dropout: 0.1
+future_cov_dim: 4
+hidden_size: 128
+input_chunk_length: 72
+input_dim: 7
+likelihood: null
+lr_scheduler_cls: null
+lr_scheduler_kwargs: null
+nr_params: 1
+num_decoder_layers: 1
+num_encoder_layers: 1
+optimizer_cls: !!python/name:torch.optim.adam.Adam ''
+optimizer_kwargs:
+  lr: 0.001
+output_chunk_length: 24
+output_chunk_shift: 0
+output_dim: 1
+static_cov_dim: 2
+temporal_decoder_hidden: 32
+temporal_hidden_size_future: 128
+temporal_hidden_size_past: 128
+temporal_width_future: 4
+temporal_width_past: 4
+train_sample_shape:
+- !!python/tuple
+  - 72
+  - 1
+- !!python/tuple
+  - 72
+  - 2
+- !!python/tuple
+  - 72
+  - 4
+- !!python/tuple
+  - 24
+  - 4
+- !!python/tuple
+  - 1
+  - 2
+- !!python/tuple
+  - 24
+  - 1
+use_layer_norm: false
+use_reversible_instance_norm: false
