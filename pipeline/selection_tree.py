@@ -32,11 +32,15 @@ class SelectionTree(Tree):
                 # It's a branch
                 node = parent_node.add(str(key), expand=self.start_expanded, data={"num_checked": 0})
                 self._build_tree(value, node)
+                if parent_node.data is not None and "num_checked" in parent_node.data:
+                    parent_node.data["num_checked"] += node.data["num_checked"]
             else:
                 # It's a leaf
-                label = self._format_label(str(key), value in self.selected_data)
-                parent_node.add_leaf(label, data={"val": value, "key": key, "checked": value in self.selected_data})
-                parent_node.data["num_checked"] += value in self.selected_data  #type:ignore
+                is_selected = value in self.selected_data
+                label = self._format_label(str(key), is_selected)
+                parent_node.add_leaf(label, data={"val": value, "key": key, "checked": is_selected})
+                if parent_node.data is not None and "num_checked" in parent_node.data:
+                    parent_node.data["num_checked"] += int(is_selected)
 
 
     def _format_label(self, text: str, is_selected: bool) -> str:
@@ -46,7 +50,29 @@ class SelectionTree(Tree):
 
     def _is_leaf(self, node: TreeNode):
         return not node.allow_expand
-        
+
+
+    def _recursive_leaf_toggle(self, node: TreeNode, select: bool) -> int:
+        if not self._is_leaf(node):
+            delta = 0
+            for child in node.children:
+                delta += self._recursive_leaf_toggle(child, select)
+            node.data["num_checked"] += delta
+            return delta
+
+        if node.data["checked"] == select:
+            return 0
+
+        node.data["checked"] = select
+        if select:
+            self.selected_data.add(node.data["val"])
+            node.set_label(self._format_label(node.data["key"], True))
+            return 1
+        else:
+            self.selected_data.discard(node.data["val"])
+            node.set_label(self._format_label(node.data["key"], False))
+            return -1
+
 
     def rebuild(self, new_data):
         self.node_data = new_data 
@@ -122,13 +148,7 @@ class SelectionTree(Tree):
 
         elif event.key == "shift+enter":
             parent = self.cursor_node.parent if self._is_leaf(self.cursor_node) else self.cursor_node  #type:ignore
-
-            if parent.data["num_checked"] == len(parent.children) or parent.data["num_checked"] == 0:  #type:ignore
-                for child in parent.children: self.handle_selection(child)  #type:ignore
-            else:
-                for child in parent.children:  #type:ignore
-                    if self._is_leaf(child) and not child.data["checked"]: self.handle_selection(child)  #type:ignore
-
+            self._recursive_leaf_toggle(parent, parent.data["num_checked"] < len(parent.children))
             event.stop()
 
         elif event.key in ("tab", "shift+tab"):
