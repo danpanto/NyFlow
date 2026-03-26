@@ -76,23 +76,33 @@ def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
 
 
 # --- CARGA DE DATOS ---
+split_val = '2025-11-01' # noviembre
+split_test = '2025-12-01' # diciembre y parte de enero
 df_train = con.execute(f"""
     SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
     payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
-    WHERE YEAR(pickup_datetime) >= 2023 AND pickup_datetime < '2025-11-01'
+    WHERE YEAR(pickup_datetime) >= 2023 AND pickup_datetime < '{split_val}'
+    USING SAMPLE 2% (System, 42)
+""").pl().lazy()
+
+df_val = con.execute(f"""
+    SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
+    payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
+    WHERE pickup_datetime >= '{split_val}' AND pickup_datetime < '{split_test}'
     USING SAMPLE 2% (System, 42)
 """).pl().lazy()
 
 df_test = con.execute(f"""
     SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
     payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
-    WHERE pickup_datetime >= '2025-11-01'
-    USING SAMPLE 10% (System, 42)
+    WHERE pickup_datetime >= '{split_test}'
+    USING SAMPLE 2% (System, 42)
 """).pl().lazy()
 
 # --- PREPARAR VARIABLES BASE ---
 print("Extrayendo variables base...")
 df_train_base = add_base_features(df_train)
+df_val_base = add_base_features(df_val)
 df_test_base = add_base_features(df_test)
 
 # --- CREAR DICCIONARIOS SOLO CON TRAIN Y MATERIALIZARLOS (.collect()) ---
@@ -140,6 +150,9 @@ def apply_historical_knowledge(lf: pl.LazyFrame) -> pl.LazyFrame:
 print("Aplicando histórico y guardando Parquets...")
 df_train_final = apply_historical_knowledge(df_train_base)
 df_train_final.sink_parquet(data_dir / "train_tip.parquet")
+
+df_val_final = apply_historical_knowledge(df_val_base)
+df_val_final.sink_parquet(data_dir / "val_tip.parquet")
 
 df_test_final = apply_historical_knowledge(df_test_base)
 df_test_final.sink_parquet(data_dir / "test_tip.parquet")
