@@ -1,0 +1,1 @@
+{"num_numeric": 3, "cat_vocab_sizes": {"PULocationID": 264, "DOLocationID": 264, "payment_type": 8, "VendorID": 5}, "num_gaussians": 9, "hidden_dim": 128, "dropout_rate": 0.3}
