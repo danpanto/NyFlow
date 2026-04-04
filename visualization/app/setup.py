@@ -112,6 +112,28 @@ async def lifespan(app: FastAPI):
     coords_rad = np.deg2rad(coords)
     app.state.tree = BallTree(coords_rad, metric='haversine')
 
+    # Distancias entre zonas
+
+    geodf_metric = app.state.gdf_zones.to_crs(epsg=3857) # en metros
+    geodf_metric['centroide'] = geodf_metric.geometry.centroid
+
+    ids = geodf_metric['locationid'].astype(str).tolist()
+    centroides = geodf_metric['centroide'].tolist()
+
+    distancias_dict = {} # distancias sin redundancia
+    for i in range(len(ids)):
+        id_origen = ids[i]
+        distancias_dict[id_origen] = {}
+        
+        for j in range(i + 1, len(ids)):
+            id_destino = ids[j]
+            dist = centroides[i].distance(centroides[j])
+            
+            # redondeo decimal
+            distancias_dict[id_origen][id_destino] = int(round(dist))
+
+    app.state.distances = distancias_dict
+
     yield
 
     console.print("[bold red]<<< Shutting down application...[/bold red]")

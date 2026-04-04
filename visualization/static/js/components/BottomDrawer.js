@@ -76,7 +76,7 @@ export class BottomDrawer extends HTMLElement {
                 :host {
                     position: absolute;
                     bottom: 0; left: 0; width: 100%;
-                    z-index: 10;
+                    z-index: 3000;
                     pointer-events: none;
                 }
 

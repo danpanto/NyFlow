@@ -19,12 +19,23 @@ export class ZoneData {
 
         this.loadingPromise = (async () => {
             try {
-                const response = await fetch('/api/taxi_zones');
-                const data = await response.json();
+                const [zonesResponse, distancesResponse] = await Promise.all([
+                    fetch('/api/taxi_zones'),
+                    fetch('/api/zone-distances')
+                ]);
+                if (!zonesResponse.ok) throw new Error(`Error en zones: ${zonesResponse.status}`);
+                if (!distancesResponse.ok) throw new Error(`Error en distances: ${distancesResponse.status}`);
+
+                const [zonesData, distancesData] = await Promise.all([
+                    zonesResponse.json(),
+                    distancesResponse.json()
+                ]);
+
+                this.distances = distancesData;
                 
-                this.geoJson = data;
+                this.geoJson = zonesData;
                 
-                data.features.forEach(f => {
+                zonesData.features.forEach(f => {
                    this.lookupMap.set(String(f.properties.locationid), f.properties);
                    if (f.properties.borough) this.boroughs.add(f.properties.borough);
                 });
@@ -59,6 +70,26 @@ export class ZoneData {
 
     getAllBoroughs() {
         return Array.from(this.boroughs).sort();
+    }
+
+    getIds() {
+        return Array.from(this.lookupMap.keys());
+    }
+
+    getDistance(idA, idB) {
+        const a = String(idA);
+        const b = String(idB);
+
+        if (a === b) return 0;
+
+        const dist = this.distances[a]?.[b] ?? this.distances[b]?.[a];
+
+        if (dist === undefined) {
+            console.warn(`Distancia no encontrada entre ${a} y ${b}`);
+            return null; 
+        }
+
+        return dist;
     }
 
     get isReady() {

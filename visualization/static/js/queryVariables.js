@@ -112,9 +112,14 @@ export const VARIABLE_CONFIG = {
         description: "National and Historic Landmarks. With tip per distance layer.",
         formatter: compactCurrency,
         units: "USD"
+    },
+    trivia: {
+        longName: "Zone Game",
+        shortName: "Zone Game",
+        description: "Guess the Zone in the least amount of tries. The selected zone is colored based on the distance to the Zone."
     }
 };
 
 export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v =>
-    v !== 'restaurant_ratings' && v !== 'asking_rent'
+    v !== 'restaurant_ratings' && v !== 'asking_rent' && v !== 'trivia'
 );

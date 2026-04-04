@@ -111,3 +111,23 @@ export class Gradient {
         return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
     }
 }
+
+
+export function getDistanceColors(distances, power = 0.5) {
+    const maxDist = Math.max(...distances);
+    return distances.map(dist => {
+        const t = 1 - (dist / maxDist) ** power;  // 1=cerca (verde), 0=lejos (rojo)
+        const hue = 120 - (120 * (1 - t));  // 120° verde → 0° rojo
+        
+        // Matices en verde: cerca → verde oscuro/vivo
+        let saturation = 80 + (20 * t);  // 80% lejos → 100% cerca
+        let lightness;
+        if (t > 0.3) {  // Solo en verdes (t>~amarillo)
+            lightness = 60 - (40 * t);  // 60% (claro) → 20% (oscuro fuerte)
+        } else {
+            lightness = 50;  // Fijo en rojo/amarillo para contraste
+        }
+        
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    });
+}

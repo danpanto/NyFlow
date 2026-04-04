@@ -10,6 +10,7 @@ import { AskingRentLayer } from "./AskingRentLayer.js";
 import { LandmarkLayer } from "./LandmarkLayer.js";
 import { queryService } from "./services/QueryService.js";
 import { SUPPORTED_VARIABLES } from "./queryVariables.js";
+import { TriviaLayer } from "./TriviaLayer.js";
 
 import { ControlPanel } from "./components/ControlPanel.js";
 import { ThemeButton } from "./components/ThemeButton.js";
@@ -53,6 +54,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const landmarkLayer = new LandmarkLayer(mapManager, sharedBackend, queryLayers["mean_tip_dis"]);
     layerSwapperData["landmarks"] = landmarkLayer;
+
+    const triviaLayer = new TriviaLayer(mapManager, sharedBackend);
+    layerSwapperData[triviaLayer.name] = triviaLayer;
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 

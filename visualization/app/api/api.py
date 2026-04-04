@@ -331,3 +331,7 @@ async def get_landmarks(request: Request):
     except Exception as e:
         print(f"Error serving landmark points: {e}")
         return {"status": "error"}
+
+@router.get("/zone-distances")
+async def read_taxi_zones(request: Request):
+    return request.app.state.distances
