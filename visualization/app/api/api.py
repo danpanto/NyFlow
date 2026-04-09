@@ -361,18 +361,20 @@ async def classify_demand(req: DemandRequest, request: Request):
         if req.vendors:
             lf_filtered = lf_filtered.filter(pl.col("VendorID").is_in(req.vendors))
 
-        if req.hour:
-            lf_filtered = lf_filtered.filter(pl.col("pickup_datetime").dt.hour() == req.hour)
+        # if req.hour:
+        #     lf_filtered = lf_filtered.filter(pl.col("pickup_datetime").dt.hour() == req.hour)
 
-        lf_filtered = lf_filtered.group_by(pl.col("PULocationID")).agg(
+        lf_filtered = lf_filtered.group_by(pl.col("PULocationID"), pl.col("pickup_datetime").dt.hour().alias("hour")).agg(
             pl.mean("count").alias("count")
         ).sort(pl.col("PULocationID")).collect()
 
-        ids = lf_filtered["PULocationID"].to_list()
         counts = lf_filtered["count"].to_numpy().reshape(-1, 1)
+        ids = lf_filtered.filter(pl.col("hour") == req.hour)["PULocationID"].to_list()
+        hour_data = lf_filtered.filter(pl.col("hour") == req.hour)["count"].to_numpy().reshape(-1, 1)
 
         kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-        preds = kmeans.fit_predict(counts)
+        kmeans.fit(counts)
+        preds = kmeans.predict(hour_data)
 
         centros = kmeans.cluster_centers_.flatten()
 
