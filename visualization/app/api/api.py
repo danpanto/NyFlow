@@ -5,6 +5,7 @@ from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 import numpy as np
 import math
+from sklearn.cluster import KMeans
 
 router = APIRouter()
 
@@ -63,6 +64,11 @@ class QueryRequest(BaseModel):
     zones: Optional[List[int]] = None # Assuming PULocationID is an integer
     time_grouping: Optional[Literal["week", "day", "hour"]] = None
     click_pos: Optional[ClickPos] = None
+
+class DemandRequest(BaseModel):
+    vendors: List[str] = Field(default_factory=lambda: ["0", "1", "2", "3"])
+    date: DateRange
+    hour: int = 0
 
 @router.post("/query")
 async def get_dashboard_data(req: QueryRequest, request: Request):
@@ -335,3 +341,57 @@ async def get_landmarks(request: Request):
 @router.get("/zone-distances")
 async def read_taxi_zones(request: Request):
     return request.app.state.distances
+
+@router.post("/hourly-demand-classification")
+async def classify_demand(req: DemandRequest, request: Request):
+    try:
+        try:
+            startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
+            endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
+        except ValueError:
+            return {"status": "invalid", "msg": "Invalid date format."}
+
+        lf = request.app.state.lf
+
+        # Filter by date range
+        lf_filtered = lf.filter(
+            pl.col("pickup_datetime").is_between(startDate, endDate)
+        )
+
+        if req.vendors:
+            lf_filtered = lf_filtered.filter(pl.col("VendorID").is_in(req.vendors))
+
+        if req.hour:
+            lf_filtered = lf_filtered.filter(pl.col("pickup_datetime").dt.hour() == req.hour)
+
+        lf_filtered = lf_filtered.group_by(pl.col("PULocationID")).agg(
+            pl.mean("count").alias("count")
+        ).sort(pl.col("PULocationID")).collect()
+
+        ids = lf_filtered["PULocationID"].to_list()
+        counts = lf_filtered["count"].to_numpy().reshape(-1, 1)
+
+        kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+        preds = kmeans.fit_predict(counts)
+
+        centros = kmeans.cluster_centers_.flatten()
+
+        orden_indices = np.argsort(centros)
+
+        mapeo_clases = {
+            orden_indices[0]: "low",    # El índice del centro más pequeño
+            orden_indices[1]: "medium", # El índice del centro del medio
+            orden_indices[2]: "high"    # El índice del centro más grande
+        }
+
+        response_data = {
+            id_loc: mapeo_clases[pred] 
+            for id_loc, pred in zip(ids, preds)
+        }
+
+        return {"status": "ok", "data": response_data}
+
+    except Exception as e:
+        print(f"Error serving zone-hour classification: {e}")
+        import traceback; traceback.print_exc()
+        return {"status": "error", "msg": str(e)}

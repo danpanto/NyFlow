@@ -11,6 +11,7 @@ import { LandmarkLayer } from "./LandmarkLayer.js";
 import { queryService } from "./services/QueryService.js";
 import { SUPPORTED_VARIABLES } from "./queryVariables.js";
 import { TriviaLayer } from "./TriviaLayer.js";
+import { DemandHourlyLayer } from "./DemandHourlyLayer.js";
 
 import { ControlPanel } from "./components/ControlPanel.js";
 import { ThemeButton } from "./components/ThemeButton.js";
@@ -57,6 +58,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const triviaLayer = new TriviaLayer(mapManager, sharedBackend);
     layerSwapperData[triviaLayer.name] = triviaLayer;
+
+    const demandHourlyLayer = new DemandHourlyLayer(mapManager, sharedBackend);
+    layerSwapperData[demandHourlyLayer.name] = demandHourlyLayer;
 
     const layerSwapper = new LayerSwapper(layerSwapperData);
 

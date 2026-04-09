@@ -117,9 +117,14 @@ export const VARIABLE_CONFIG = {
         longName: "Zone Game",
         shortName: "Zone Game",
         description: "Guess the Zone in the least amount of tries. The selected zone is colored based on the distance to the Zone."
+    },
+    demand_hourly: {
+        longName: "Demand Hourly",
+        shortName: "Demand Hourly",
+        description: "Per-zone demand classification (low / medium / high) for a chosen hour of day."
     }
 };
 
 export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v =>
-    v !== 'restaurant_ratings' && v !== 'asking_rent' && v !== 'trivia'
+    v !== 'restaurant_ratings' && v !== 'asking_rent' && v !== 'trivia' && v !== 'demand_hourly' && v !== 'landmarks'
 );

@@ -42,6 +42,10 @@ class FilterService extends EventTarget {
     }
 
     selectLayer(layer) {
+        if (this._layer !== layer) {
+            this.selectVendor(null);
+            this.selectZone(null);
+        }
         this._layer = layer;
         this._sendEvent("layer", layer);
     }
@@ -87,6 +91,8 @@ class FilterService extends EventTarget {
 
     selectVendor(vendorId, unique = false) {
         let changed = false;
+        if (vendorId === undefined) return;
+        if (vendorId !== null) vendorId = String(vendorId);
         if (unique) {
             // If it's already the ONLY selected vendor, don't clear and trigger repaint
             const isAlreadyOnlySelection = this._vendors.size === 1 && this._vendors.has(vendorId);
