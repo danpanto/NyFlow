@@ -44,9 +44,12 @@ class MinioSparkClient:
             .config("spark.sql.session.timeZone", "UTC") 
             
         if inference:
+            flags_java = "-Dio.netty.tryReflectionSetAccessible=true --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED"
             self._spark_builder = self._spark_builder \
                 .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
                 .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true") \
+                .config("spark.driver.extraJavaOptions", flags_java)\
+                .config("spark.executor.extraJavaOptions", flags_java)
 
         # Set up MinIO credentials   
         self._spark_builder = self._spark_builder \
