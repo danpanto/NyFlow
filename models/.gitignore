@@ -3,4 +3,6 @@ mis_logs_darts/
 darts_models/
 artefactos_produccion/
 mis_transformadores/
-final_models/demand
+predictor/final_models/demand
+predictor/final_models/amount
+predictor/final_models/distance
