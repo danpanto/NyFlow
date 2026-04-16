@@ -18,12 +18,11 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
     import requests as rq
     import io
 
-
     url = "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         "Referer": url,
-        "Accept": "application/octet-stream; application/x-www-form-urlencoded" 
+        "Accept": "application/octet-stream; application/x-www-form-urlencoded",
     }
 
     session = rq.Session()
@@ -37,7 +36,9 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
             return (-1, parquet_response.status_code)
 
         magic_bytes = parquet_response.raw.read(4)
-        if magic_bytes != b"PAR1":  # Check if the file is really a parquet, more reliable than content-type or extension
+        if (
+            magic_bytes != b"PAR1"
+        ):  # Check if the file is really a parquet, more reliable than content-type or extension
             return (-2, f"Invalid file type: {magic_bytes}")
 
         file_data = magic_bytes + parquet_response.raw.read()
@@ -45,7 +46,13 @@ def get_lazy_frame(date: str, vendor: str) -> tuple:
     return (pl.read_parquet(io.BytesIO(file_data)).lazy(), file_url)
 
 
-def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str, client: MinioSparkClient = None) -> str:
+def save_lazy_frame(
+    lf: pl.LazyFrame,
+    year: int,
+    month: str,
+    vendor: str,
+    client: MinioSparkClient = None,
+) -> str:
     """
     Save data to a local file on disk
 
@@ -62,8 +69,8 @@ def save_lazy_frame(lf: pl.LazyFrame, year: int, month: str, vendor: str, client
     from os import environ
 
     data_dir = environ["PD2_DATA_DIR"]
-    
-    month_dir = Path(data_dir, str(year), month.lstrip('0'))
+
+    month_dir = Path(data_dir, str(year), month.lstrip("0"))
     month_dir.mkdir(parents=True, exist_ok=True)
 
     filepath = Path(month_dir, f"{vendor}.parquet")

@@ -9,17 +9,17 @@ from sklearn.cluster import KMeans
 
 router = APIRouter()
 
+
 @router.get("/taxi_zones")
 async def read_taxi_zones(request: Request):
     # Access the cache from the app state
     return request.app.state.taxi_zones
 
+
 @router.get("/date_range")
 async def read_date_range(request: Request):
-    return {
-        "min": "2021-01-01T00:00:00",
-        "max": "2025-12-31T23:00:00"
-    }
+    return {"min": "2021-01-01T00:00:00", "max": "2025-12-31T23:00:00"}
+
 
 @router.get("/vendor")
 async def read_vendors(request: Request):
@@ -29,6 +29,7 @@ async def read_vendors(request: Request):
         "2": "Uber",
         "3": "Lyft",
     }
+
 
 sumOp = lambda x: pl.col(x).sum()
 meanOp = lambda x: pl.col(x).sum() / pl.col("count").sum()
@@ -46,40 +47,48 @@ variable_operations = {
     "mean_tip_time": meanTimeOp("tip_amount"),
     "mean_tip_dis": meanDisOp("tip_amount"),
     "mean_price_time": meanTimeOp("fare_amount"),
-    "mean_price_dis": meanTimeOp("fare_amount")
+    "mean_price_dis": meanTimeOp("fare_amount"),
 }
+
 
 class DateRange(BaseModel):
     min: str
     max: str
 
+
 class ClickPos(BaseModel):
     lat: float
     lng: float
+
 
 class QueryRequest(BaseModel):
     vendors: List[str]
     date: DateRange
     variables: List[str]
-    zones: Optional[List[int]] = None # Assuming PULocationID is an integer
+    zones: Optional[List[int]] = None  # Assuming PULocationID is an integer
     time_grouping: Optional[Literal["week", "day", "hour"]] = None
     click_pos: Optional[ClickPos] = None
+
 
 class DemandRequest(BaseModel):
     vendors: List[str] = Field(default_factory=lambda: ["0", "1", "2", "3"])
     date: DateRange
     hour: int = 0
 
+
 @router.post("/query")
 async def get_dashboard_data(req: QueryRequest, request: Request):
-    
     try:
         startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
         endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
     except ValueError:
         return {"status": "invalid", "msg": "Invalid date format."}
 
-    active_aggs = [variable_operations[v].alias(v) for v in req.variables if v in variable_operations]
+    active_aggs = [
+        variable_operations[v].alias(v)
+        for v in req.variables
+        if v in variable_operations
+    ]
     if len(active_aggs) == 0:
         return {"status": "invalid", "msg": "Invalid variable."}
 
@@ -90,13 +99,17 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
 
     if req.vendors:
         lf = lf.filter(pl.col("VendorID").is_in(req.vendors))
-        
+
     if req.zones:
         lf = lf.filter(pl.col("PULocationID").is_in(req.zones))
 
     # 2. Prepare the base ids layer (and filter it by zones if provided)
     # Ensure it's evaluated lazily to align with `lf`
-    base_ids = request.app.state.ids.lazy() if hasattr(request.app.state.ids, 'lazy') else request.app.state.ids
+    base_ids = (
+        request.app.state.ids.lazy()
+        if hasattr(request.app.state.ids, "lazy")
+        else request.app.state.ids
+    )
     if req.zones:
         base_ids = base_ids.filter(pl.col("PULocationID").is_in(req.zones))
 
@@ -108,46 +121,45 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
             interval = "1d"
         elif req.time_grouping == "hour":
             interval = "1h"
-        
+
         # Truncate datetimes to the chosen interval bucket
-        lf = lf.with_columns(pl.col("pickup_datetime").dt.truncate(interval).alias("time_bucket"))
-        
+        lf = lf.with_columns(
+            pl.col("pickup_datetime").dt.truncate(interval).alias("time_bucket")
+        )
+
         lf_trips = lf.group_by(["PULocationID", "time_bucket"]).agg(active_aggs)
-        
+
         # Cross join unique time buckets with base_ids to ensure 0s for inactive periods
         unique_times = lf_trips.select("time_bucket").unique()
         base_grid = base_ids.join(unique_times, how="cross")
-        
+
         df_result = (
-            base_grid
-            .join(lf_trips, on=["PULocationID", "time_bucket"], how="left")
+            base_grid.join(lf_trips, on=["PULocationID", "time_bucket"], how="left")
             .fill_null(0)
             .collect()
         )
-        
+
         response_data = {var: {} for var in req.variables if var in df_result.columns}
-        
+
         # Partition data by time to build the nested JSON
         partitions = df_result.partition_by("time_bucket", as_dict=True)
         for time_key, group_df in partitions.items():
             # Extract datetime from tuple (Polars as_dict keys are tuples)
             time_val = time_key[0] if isinstance(time_key, tuple) else time_key
             time_str = time_val.isoformat()
-            
+
             for var in req.variables:
                 if var in df_result.columns:
-                    response_data[var][time_str] = dict(zip(
-                        group_df["PULocationID"].to_list(), 
-                        group_df[var].to_list()
-                    ))
-                    
+                    response_data[var][time_str] = dict(
+                        zip(group_df["PULocationID"].to_list(), group_df[var].to_list())
+                    )
+
     else:
         # Standard execution (No time grouping)
         lf_trips = lf.group_by("PULocationID").agg(active_aggs)
-        
+
         df_result = (
-            base_ids
-            .join(lf_trips, on="PULocationID", how="left")
+            base_ids.join(lf_trips, on="PULocationID", how="left")
             .fill_null(0)
             .collect()
         )
@@ -155,22 +167,22 @@ async def get_dashboard_data(req: QueryRequest, request: Request):
         response_data = {}
         for var in req.variables:
             if var in df_result.columns:
-                response_data[var] = dict(zip(
-                    df_result["PULocationID"].to_list(), 
-                    df_result[var].to_list()
-                ))
+                response_data[var] = dict(
+                    zip(df_result["PULocationID"].to_list(), df_result[var].to_list())
+                )
 
     return {"status": "ok", "data": response_data}
 
+
 @router.post("/route")
-async def get_optimal_route(req: QueryRequest, request: Request):    
+async def get_optimal_route(req: QueryRequest, request: Request):
     try:
         startDate = datetime.fromisoformat(req.date.min).replace(tzinfo=None)
         endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
-        
+
         lf = request.app.state.lf
         lf = lf.filter(pl.col("pickup_datetime").is_between(startDate, endDate))
-        
+
         if req.vendors:
             lf = lf.filter(pl.col("VendorID").is_in(req.vendors))
 
@@ -183,16 +195,22 @@ async def get_optimal_route(req: QueryRequest, request: Request):
         )
 
         # Diccionario de reputación para búsquedas rápidas O(1)
-        reputation_map = dict(zip(
-            top_zone_df["PULocationID"].to_list(), 
-            top_zone_df["total_trips"].to_list()
-        ))
+        reputation_map = dict(
+            zip(
+                top_zone_df["PULocationID"].to_list(),
+                top_zone_df["total_trips"].to_list(),
+            )
+        )
 
         # Aplicar variante de Greedy Lookahead
         MAX_STOPS: int = 5
         MAX_DISTANCE: float = 15.0
         EPS: float = 1e-4
-        start: tuple[float, float] = (req.click_pos.lat, req.click_pos.lng) if req.click_pos else (40.7580, -73.9855)
+        start: tuple[float, float] = (
+            (req.click_pos.lat, req.click_pos.lng)
+            if req.click_pos
+            else (40.7580, -73.9855)
+        )
         route_points: list[tuple[float, float]] = [start]
         visited_zones: set[int] = set()
         total_distance: float = 0.0
@@ -200,7 +218,9 @@ async def get_optimal_route(req: QueryRequest, request: Request):
 
         while len(route_points) <= MAX_STOPS and total_distance < MAX_DISTANCE:
             # Extraer puntos cercanos al actual
-            distances, indexes = request.app.state.tree.query(np.deg2rad([current_coords]), k=20)
+            distances, indexes = request.app.state.tree.query(
+                np.deg2rad([current_coords]), k=20
+            )
             candidate_zones_info = request.app.state.gdf_zones.iloc[indexes[0]]
 
             best_score: float = -1
@@ -210,7 +230,10 @@ async def get_optimal_route(req: QueryRequest, request: Request):
             i_cand = 0
             for _, row in candidate_zones_info.iterrows():
                 z: int = row["locationid"]
-                c: tuple[float, float] = (row.geometry.centroid.y, row.geometry.centroid.x)
+                c: tuple[float, float] = (
+                    row.geometry.centroid.y,
+                    row.geometry.centroid.x,
+                )
                 d: float = distances[0][i_cand]
                 i_cand += 1
 
@@ -218,18 +241,26 @@ async def get_optimal_route(req: QueryRequest, request: Request):
                     continue
 
                 # Puntuación basada en reputación propia + potencial de vecinos (Lookahead simplificado)
-                distances2, indexes2 = request.app.state.tree.query(np.deg2rad([c]), k=3)
-                neighbor_zones_ids = request.app.state.gdf_zones.iloc[indexes2[0]]['locationid'].astype(int).tolist()
-                
+                distances2, indexes2 = request.app.state.tree.query(
+                    np.deg2rad([c]), k=3
+                )
+                neighbor_zones_ids = (
+                    request.app.state.gdf_zones.iloc[indexes2[0]]["locationid"]
+                    .astype(int)
+                    .tolist()
+                )
+
                 neighbor_potential = 0.0
                 for idx, n_id in enumerate(neighbor_zones_ids):
                     if n_id != z:
                         dist_n = distances2[0][idx]
-                        neighbor_potential += reputation_map.get(n_id, 0.0) / (dist_n + EPS)
+                        neighbor_potential += reputation_map.get(n_id, 0.0) / (
+                            dist_n + EPS
+                        )
 
                 own_reputation = reputation_map.get(z, 0.0)
                 # Penalización lineal sobre la distancia en radianes para no aplastar zonas populares lejanas
-                score = (.8 * own_reputation + 0.2 * neighbor_potential) / (d + EPS)
+                score = (0.8 * own_reputation + 0.2 * neighbor_potential) / (d + EPS)
 
                 if score > best_score:
                     best_score = score
@@ -245,44 +276,59 @@ async def get_optimal_route(req: QueryRequest, request: Request):
             total_distance += distance_to_best_zone
             current_coords = best_zone_coords
 
-        if len(route_points)<2:
+        if len(route_points) < 2:
             route_points.append((40.7128, -74.0060))
-            
+
     except Exception as e:
         print(f"Error calculating dynamic destination: {e}")
-        route_points = [
-                (40.7580, -73.9855), 
-                (40.7128, -74.0060)
-        ]           
-        
+        route_points = [(40.7580, -73.9855), (40.7128, -74.0060)]
+
     return {"status": "ok", "data": route_points}
 
 
 @router.post("/restaurant-ratings")
-async def get_restaurant_ratings(req: QueryRequest, request: Request):               
-    return {"status": "ok", "data": request.app.state.gdf_restaurants.groupby("locationid")["SCORE"].mean().to_dict()}
+async def get_restaurant_ratings(req: QueryRequest, request: Request):
+    return {
+        "status": "ok",
+        "data": request.app.state.gdf_restaurants.groupby("locationid")["SCORE"]
+        .mean()
+        .to_dict(),
+    }
+
 
 @router.post("/restaurant-points")
 async def get_restaurant_points(request: Request):
     try:
         gdf = request.app.state.gdf_restaurants
         import math
-        
+
         # Eliminar coordenadas incorrectas
-        gdf_valid = gdf[(gdf.geometry.centroid.x != 0.0) | (gdf.geometry.centroid.y != 0.0)]
-        
+        gdf_valid = gdf[
+            (gdf.geometry.centroid.x != 0.0) | (gdf.geometry.centroid.y != 0.0)
+        ]
+
         # Eliminar duplicados históricos
-        gdf_valid = gdf_valid.assign(x=gdf_valid.geometry.centroid.x, y=gdf_valid.geometry.centroid.y)
-        deduped = gdf_valid.groupby(['x', 'y', 'DBA'], dropna=False)['SCORE'].mean().reset_index()
+        gdf_valid = gdf_valid.assign(
+            x=gdf_valid.geometry.centroid.x, y=gdf_valid.geometry.centroid.y
+        )
+        deduped = (
+            gdf_valid.groupby(["x", "y", "DBA"], dropna=False)["SCORE"]
+            .mean()
+            .reset_index()
+        )
 
         data = []
-        for x, y, name, score in zip(deduped['x'], deduped['y'], deduped['DBA'], deduped['SCORE']):
-            data.append({
-                "name": name,
-                "score": float(score) if not math.isnan(score) else None,
-                "lat": float(y),
-                "lng": float(x)
-            })
+        for x, y, name, score in zip(
+            deduped["x"], deduped["y"], deduped["DBA"], deduped["SCORE"]
+        ):
+            data.append(
+                {
+                    "name": name,
+                    "score": float(score) if not math.isnan(score) else None,
+                    "lat": float(y),
+                    "lng": float(x),
+                }
+            )
         return {"status": "ok", "data": data}
     except Exception as e:
         print(f"Error serving restaurant points: {e}")
@@ -296,30 +342,37 @@ async def get_asking_rent(req: QueryRequest, request: Request):
         endDate = datetime.fromisoformat(req.date.max).replace(tzinfo=None)
     except ValueError:
         return {"status": "invalid", "msg": "Invalid date format."}
-        
+
     lf = request.app.state.rent
 
     # Filtrar por fecha
     lf = lf.filter(pl.col("Date").is_between(startDate, endDate))
-    
-    base_ids = request.app.state.ids.lazy() if hasattr(request.app.state.ids, 'lazy') else request.app.state.ids
 
-    lf_rent = lf.select(["LocationID", "AskingRent"]).rename({"AskingRent": "asking_rent"})
-    
+    base_ids = (
+        request.app.state.ids.lazy()
+        if hasattr(request.app.state.ids, "lazy")
+        else request.app.state.ids
+    )
+
+    lf_rent = lf.select(["LocationID", "AskingRent"]).rename(
+        {"AskingRent": "asking_rent"}
+    )
+
     # Aseguramos que todas las ids tengan datos
     df_result = (
-        base_ids
-        .join(lf_rent, left_on="PULocationID", right_on="LocationID", how="left")
+        base_ids.join(
+            lf_rent, left_on="PULocationID", right_on="LocationID", how="left"
+        )
         .fill_null(0)
         .collect()
     )
 
-    response_data = dict(zip(
-        df_result["PULocationID"].to_list(), 
-        df_result["asking_rent"].to_list()
-    ))
+    response_data = dict(
+        zip(df_result["PULocationID"].to_list(), df_result["asking_rent"].to_list())
+    )
 
     return {"status": "ok", "data": response_data}
+
 
 @router.post("/landmark-points")
 async def get_landmarks(request: Request):
@@ -328,19 +381,23 @@ async def get_landmarks(request: Request):
 
         data = []
         for row in df.iter_rows(named=True):
-            data.append({
-                "name": row["Landmark name"],
-                "lat": float(row["Latitude"]),
-                "lng": float(row["Longitude"])
-            })
+            data.append(
+                {
+                    "name": row["Landmark name"],
+                    "lat": float(row["Latitude"]),
+                    "lng": float(row["Longitude"]),
+                }
+            )
         return {"status": "ok", "data": data}
     except Exception as e:
         print(f"Error serving landmark points: {e}")
         return {"status": "error"}
 
+
 @router.get("/zone-distances")
 async def read_taxi_zones(request: Request):
     return request.app.state.distances
+
 
 @router.post("/hourly-demand-classification")
 async def classify_demand(req: DemandRequest, request: Request):
@@ -364,13 +421,23 @@ async def classify_demand(req: DemandRequest, request: Request):
         # if req.hour:
         #     lf_filtered = lf_filtered.filter(pl.col("pickup_datetime").dt.hour() == req.hour)
 
-        lf_filtered = lf_filtered.group_by(pl.col("PULocationID"), pl.col("pickup_datetime").dt.hour().alias("hour")).agg(
-            pl.mean("count").alias("count")
-        ).sort(pl.col("PULocationID")).collect()
+        lf_filtered = (
+            lf_filtered.group_by(
+                pl.col("PULocationID"),
+                pl.col("pickup_datetime").dt.hour().alias("hour"),
+            )
+            .agg(pl.mean("count").alias("count"))
+            .sort(pl.col("PULocationID"))
+            .collect()
+        )
 
         counts = lf_filtered["count"].to_numpy().reshape(-1, 1)
         ids = lf_filtered.filter(pl.col("hour") == req.hour)["PULocationID"].to_list()
-        hour_data = lf_filtered.filter(pl.col("hour") == req.hour)["count"].to_numpy().reshape(-1, 1)
+        hour_data = (
+            lf_filtered.filter(pl.col("hour") == req.hour)["count"]
+            .to_numpy()
+            .reshape(-1, 1)
+        )
 
         kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
         kmeans.fit(counts)
@@ -381,19 +448,18 @@ async def classify_demand(req: DemandRequest, request: Request):
         orden_indices = np.argsort(centros)
 
         mapeo_clases = {
-            orden_indices[0]: "low",    # El índice del centro más pequeño
-            orden_indices[1]: "medium", # El índice del centro del medio
-            orden_indices[2]: "high"    # El índice del centro más grande
+            orden_indices[0]: "low",  # El índice del centro más pequeño
+            orden_indices[1]: "medium",  # El índice del centro del medio
+            orden_indices[2]: "high",  # El índice del centro más grande
         }
 
-        response_data = {
-            id_loc: mapeo_clases[pred] 
-            for id_loc, pred in zip(ids, preds)
-        }
+        response_data = {id_loc: mapeo_clases[pred] for id_loc, pred in zip(ids, preds)}
 
         return {"status": "ok", "data": response_data}
 
     except Exception as e:
         print(f"Error serving zone-hour classification: {e}")
-        import traceback; traceback.print_exc()
+        import traceback
+
+        traceback.print_exc()
         return {"status": "error", "msg": str(e)}

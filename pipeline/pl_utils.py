@@ -13,26 +13,27 @@ def get_years_months_vendors() -> tuple[dict[str, dict[str, str]], list[str]] | 
     soup = BeautifulSoup(response.text, "html.parser")
 
     dates = {
-        tag_div.get("id")[3:]: {  #type:ignore
-            tag_strong.text: f"{tag_div.get("id")[3:]}-{i+1:0>2}"  #type:ignore
+        tag_div.get("id")[3:]: {  # type:ignore
+            tag_strong.text: f"{tag_div.get('id')[3:]}-{i + 1:0>2}"  # type:ignore
             for i, tag_strong in enumerate(tag_div.find_all("strong"))
         }
-        for tag_div
-        in soup.find_all("div", {"class": "faq-answers"})
+        for tag_div in soup.find_all("div", {"class": "faq-answers"})
     }
 
     vendors = list()
     for td in soup.find_all("td"):
         # Get available vendors
         for link in td.find_all("a"):
-            v = link.get("title")[:-13]  #type:ignore
+            v = link.get("title")[:-13]  # type:ignore
             if v not in vendors:
                 vendors.append(v)
 
-    return (dates, vendors)  #type:ignore
+    return (dates, vendors)  # type:ignore
 
 
-def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = False) -> dict[str, dict] | list[str] | None:
+def get_parquet_files(
+    client: MinioSparkClient | None = None, as_list: bool = False
+) -> dict[str, dict] | list[str] | None:
     from pathlib import Path
     from os import environ
 
@@ -49,7 +50,6 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
 
         add_file(data[parts[0]], parts[1:], final_value)
 
-
     res = {}
     res_list = set()
 
@@ -64,13 +64,15 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
                 if as_list:
                     res_list.add(filename)
                 else:
-                    add_file(res, ("data", *file_path.relative_to(data_dir).parts), filename)
+                    add_file(
+                        res, ("data", *file_path.relative_to(data_dir).parts), filename
+                    )
 
     else:
         objects = client.list_objects(path="", recursive=True)
-        
+
         for obj in objects:
-            parts = Path(obj.object_name).parts  #type:ignore
+            parts = Path(obj.object_name).parts  # type:ignore
 
             i = 0
             for p in parts:
@@ -81,12 +83,14 @@ def get_parquet_files(client: MinioSparkClient | None = None, as_list: bool = Fa
             if i == len(parts):
                 continue
 
-            obj_name = '/'.join(parts[:i+1])
-  
+            obj_name = "/".join(parts[: i + 1])
+
             if as_list:
                 res_list.add(obj_name)
             else:
-                add_file(res, Path(obj_name).parts, obj_name.replace("cityenjoyer/", ""))  #type:ignore
+                add_file(
+                    res, Path(obj_name).parts, obj_name.replace("cityenjoyer/", "")
+                )  # type:ignore
 
     return list(res_list) if as_list else res
 
@@ -95,6 +99,8 @@ def remove_files(files, data_path):
     for f in files:
         f.unlink()
 
-    for p in sorted(data_path.glob("**/*"), reverse=True):  # Remove child directories before parents
+    for p in sorted(
+        data_path.glob("**/*"), reverse=True
+    ):  # Remove child directories before parents
         if p.is_dir() and not any(p.iterdir()):
             p.rmdir()

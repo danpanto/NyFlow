@@ -4,7 +4,7 @@ from minio_utils import MinioSparkClient
 from datetime import datetime
 
 
-def transform_columns(lf: pl.LazyFrame, vendor: str, date : str) -> pl.LazyFrame:
+def transform_columns(lf: pl.LazyFrame, vendor: str, date: str) -> pl.LazyFrame:
     """
     Apply column transformations to the data
 
@@ -21,9 +21,8 @@ def transform_columns(lf: pl.LazyFrame, vendor: str, date : str) -> pl.LazyFrame
         build_yellow_params,
         build_green_params,
         build_fhvhv_params,
-        UNIFIED_SCHEMA
+        UNIFIED_SCHEMA,
     )
-
 
     match vendor:
         case "yellow":
@@ -49,15 +48,15 @@ def transform_columns(lf: pl.LazyFrame, vendor: str, date : str) -> pl.LazyFrame
     if "apply" in params:
         for tr_fun in params["apply"]:
             lf = tr_fun(lf)
-    
+
     # Delete the "future data"
     start_date = datetime.strptime(date, "%Y-%m")
-    
+
     end_date = pl.lit(start_date).dt.offset_by("1mo")
-    
+
     lf = lf.filter(
-        (pl.col("pickup_datetime") >= start_date) & 
-        (pl.col("pickup_datetime") < end_date)
+        (pl.col("pickup_datetime") >= start_date)
+        & (pl.col("pickup_datetime") < end_date)
     )
 
     return lf.select(UNIFIED_SCHEMA)
@@ -67,10 +66,10 @@ def remove_outliers_local(filepaths: set[str]):
     from os import environ
 
     config = {
-        "fare_amount":  (0, 10000),
-        "tip_amount":   (0, 10000),
+        "fare_amount": (0, 10000),
+        "tip_amount": (0, 10000),
         "tolls_amount": (0, 5000),
-        "total_amount": (0, 30000)
+        "total_amount": (0, 30000),
     }
     clean_paths = set()
 
@@ -79,13 +78,23 @@ def remove_outliers_local(filepaths: set[str]):
     clean_dir.mkdir(exist_ok=True, parents=True)
 
     for file in filepaths:
-        lf_final = pl.scan_parquet(file).with_columns([
-            pl.col("trip_distance").mul(1609.34).clip(0, 200 * 1609.34).cast(pl.Int32),
-            *[pl.col(col).clip(low, high).cast(pl.Int16) for col, (low, high) in config.items()]
-        ])
+        lf_final = pl.scan_parquet(file).with_columns(
+            [
+                pl.col("trip_distance")
+                .mul(1609.34)
+                .clip(0, 200 * 1609.34)
+                .cast(pl.Int32),
+                *[
+                    pl.col(col).clip(low, high).cast(pl.Int16)
+                    for col, (low, high) in config.items()
+                ],
+            ]
+        )
 
         p = Path(file)
-        final_path = clean_dir / f"{'_'.join(p.relative_to(data_dir).parts[:-1])}_{p.name}"
+        final_path = (
+            clean_dir / f"{'_'.join(p.relative_to(data_dir).parts[:-1])}_{p.name}"
+        )
 
         lf_final.sink_parquet(final_path)
         clean_paths.add(str(final_path))
@@ -98,10 +107,10 @@ def remove_outliers_minio(filepaths: set[str], client: MinioSparkClient):
     from pyspark.sql.types import IntegerType, ShortType
 
     config = {
-        "fare_amount":  (0, 10000),
-        "tip_amount":   (0, 10000),
+        "fare_amount": (0, 10000),
+        "tip_amount": (0, 10000),
         "tolls_amount": (0, 5000),
-        "total_amount": (0, 30000)
+        "total_amount": (0, 30000),
     }
     clean_paths = set()
 
@@ -112,14 +121,16 @@ def remove_outliers_minio(filepaths: set[str], client: MinioSparkClient):
             "trip_distance",
             F.least(
                 F.greatest(F.col("trip_distance") * 1609.34, F.lit(0)),
-                F.lit(200 * 1609.34)
-            ).cast(IntegerType())
+                F.lit(200 * 1609.34),
+            ).cast(IntegerType()),
         )
 
         for col_name, (low, high) in config.items():
             df_final = df_final.withColumn(
                 col_name,
-                F.least(F.greatest(F.col(col_name), F.lit(low)), F.lit(high)).cast(ShortType())
+                F.least(F.greatest(F.col(col_name), F.lit(low)), F.lit(high)).cast(
+                    ShortType()
+                ),
             )
 
         p = Path(file)
@@ -137,14 +148,14 @@ def merge_files_local(files: set[str]):
     merge_dir = Path(environ["PD2_MERGED_DIR"])
     merge_dir.mkdir(exist_ok=True)
 
-    file_path = Path(merge_dir, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet")
+    file_path = Path(
+        merge_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_merged.parquet"
+    )
     if file_path.exists():
         file_path.unlink()
-    
+
     pl.concat(
-        [pl.scan_parquet(f) for f in files],
-        how="diagonal",
-        rechunk=False
+        [pl.scan_parquet(f) for f in files], how="diagonal", rechunk=False
     ).sink_parquet(file_path)
 
     return str(file_path)
@@ -155,8 +166,8 @@ def merge_files_minio(files: set[str], client: MinioSparkClient):
 
     client.mkdir("merged", exist_ok=True)
 
-    file_path = f"merged/{datetime.now().strftime("%Y%m%d_%H%M%S")}_merged.parquet"
-    
+    file_path = f"merged/{datetime.now().strftime('%Y%m%d_%H%M%S')}_merged.parquet"
+
     df = client.read_parquet(files, mergeSchema="true")
     client.write_parquet(df, file_path)
 
@@ -179,41 +190,38 @@ def prepare_data_local(file: str):
     except:
         raise Exception("No file was found containing zone centroids data")
 
-    pl.scan_parquet(file).sort(
-        "pickup_datetime"
-    ).group_by_dynamic(
-        "pickup_datetime",
-        every="1h",
-        group_by=["VendorID", "PULocationID"]
+    pl.scan_parquet(file).sort("pickup_datetime").group_by_dynamic(
+        "pickup_datetime", every="1h", group_by=["VendorID", "PULocationID"]
     ).agg(
         pl.len().cast(pl.Int32).alias("demand"),
         pl.col("trip_distance").mean().cast(pl.Float32).alias("avg_distance"),
-        pl.col("total_amount").mean().cast(pl.Float32).alias("avg_amount")
+        pl.col("total_amount").mean().cast(pl.Float32).alias("avg_amount"),
     ).select(
         "VendorID",
         "PULocationID",
         pl.col("pickup_datetime").alias("timestamp"),
         "demand",
         "avg_distance",
-        "avg_amount"
-    ).filter(
-        ~(pl.col("PULocationID").is_in([264, 265]))
-    ).join(
-        lf_cent,
-        left_on="PULocationID",
-        right_on="locationid",
-        how="left"
-    ).with_columns([
-        pl.col("Latitude").cast(pl.Float32).alias("Latitude"),
-        pl.col("Longitude").cast(pl.Float32).alias("Longitude"),
-        pl.col("timestamp").dt.hour().alias("hour"),
-        pl.col("timestamp").dt.weekday().alias("dow")
-    ]).with_columns([
-        (pl.col("hour") * (PI2 / 24)).sin().cast(pl.Float32).alias("hour_sin"),
-        (pl.col("hour") * (PI2 / 24)).cos().cast(pl.Float32).alias("hour_cos"),
-        (pl.col("dow") * (PI2 / 7)).sin().cast(pl.Float32).alias("dow_sin"),
-        (pl.col("dow") * (PI2 / 7)).cos().cast(pl.Float32).alias("dow_cos"),
-    ]).sink_parquet(Path(agg_dir, f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet"))
+        "avg_amount",
+    ).filter(~(pl.col("PULocationID").is_in([264, 265]))).join(
+        lf_cent, left_on="PULocationID", right_on="locationid", how="left"
+    ).with_columns(
+        [
+            pl.col("Latitude").cast(pl.Float32).alias("Latitude"),
+            pl.col("Longitude").cast(pl.Float32).alias("Longitude"),
+            pl.col("timestamp").dt.hour().alias("hour"),
+            pl.col("timestamp").dt.weekday().alias("dow"),
+        ]
+    ).with_columns(
+        [
+            (pl.col("hour") * (PI2 / 24)).sin().cast(pl.Float32).alias("hour_sin"),
+            (pl.col("hour") * (PI2 / 24)).cos().cast(pl.Float32).alias("hour_cos"),
+            (pl.col("dow") * (PI2 / 7)).sin().cast(pl.Float32).alias("dow_sin"),
+            (pl.col("dow") * (PI2 / 7)).cos().cast(pl.Float32).alias("dow_cos"),
+        ]
+    ).sink_parquet(
+        Path(agg_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_agg.parquet")
+    )
 
 
 def prepare_data_minio(file: str, client: MinioSparkClient):
@@ -232,53 +240,48 @@ def prepare_data_minio(file: str, client: MinioSparkClient):
 
         PI2 = 2 * pi
 
-        df_agg = client.read_parquet(file).groupBy(
-        "VendorID", 
-        "PULocationID", 
-            F.window("pickup_datetime", "1 hour").alias("window")
-        ).agg(
-            F.count("*").cast(IntegerType()).alias("demand"),
-            F.avg("trip_distance").cast(FloatType()).alias("avg_distance"),
-            F.avg("total_amount").cast(FloatType()).alias("avg_amount")
-        ).select(
-            "VendorID", 
-            "PULocationID", 
-            F.col("window.start").alias("timestamp"),
-            "demand", "avg_distance", "avg_amount"
-        ).filter(
-            ~(F.col("PULocationID").isin([264, 265]))
+        df_agg = (
+            client.read_parquet(file)
+            .groupBy(
+                "VendorID",
+                "PULocationID",
+                F.window("pickup_datetime", "1 hour").alias("window"),
+            )
+            .agg(
+                F.count("*").cast(IntegerType()).alias("demand"),
+                F.avg("trip_distance").cast(FloatType()).alias("avg_distance"),
+                F.avg("total_amount").cast(FloatType()).alias("avg_amount"),
+            )
+            .select(
+                "VendorID",
+                "PULocationID",
+                F.col("window.start").alias("timestamp"),
+                "demand",
+                "avg_distance",
+                "avg_amount",
+            )
+            .filter(~(F.col("PULocationID").isin([264, 265])))
         )
 
-        df_final = df_agg.join(
-            other=df_cent,
-            on=df_agg.PULocationID == df_cent.locationid, 
-            how="left"
-        ).withColumn(
-            "Latitude",
-            F.col("Latitude").cast(FloatType())
-        ).withColumn(
-            "Longitude",
-            F.col("Longitude").cast(FloatType())
-        ).drop("locationid").withColumn(
-            "hour",
-            F.hour("timestamp")
-        ).withColumn(
-            "dow",
-            F.dayofweek("timestamp")
-        ).withColumn(
-            "hour_sin",
-            F.sin(F.col("hour") * (PI2 / 24))
-        ).withColumn(
-            "hour_cos",
-            F.cos(F.col("hour") * (PI2 / 24))
-        ).withColumn(
-            "dow_sin",
-            F.sin(F.col("dow") * (PI2 / 7))
-        ).withColumn(
-            "dow_cos",
-            F.cos(F.col("dow") * (PI2 / 7))
-        ).dropna()
+        df_final = (
+            df_agg.join(
+                other=df_cent, on=df_agg.PULocationID == df_cent.locationid, how="left"
+            )
+            .withColumn("Latitude", F.col("Latitude").cast(FloatType()))
+            .withColumn("Longitude", F.col("Longitude").cast(FloatType()))
+            .drop("locationid")
+            .withColumn("hour", F.hour("timestamp"))
+            .withColumn("dow", F.dayofweek("timestamp"))
+            .withColumn("hour_sin", F.sin(F.col("hour") * (PI2 / 24)))
+            .withColumn("hour_cos", F.cos(F.col("hour") * (PI2 / 24)))
+            .withColumn("dow_sin", F.sin(F.col("dow") * (PI2 / 7)))
+            .withColumn("dow_cos", F.cos(F.col("dow") * (PI2 / 7)))
+            .dropna()
+        )
 
-        client.write_parquet(df_final, f"prepared_for_model/{datetime.now().strftime("%Y%m%d_%H%M%S")}_agg.parquet")
+        client.write_parquet(
+            df_final,
+            f"prepared_for_model/{datetime.now().strftime('%Y%m%d_%H%M%S')}_agg.parquet",
+        )
     except:
         raise Exception("Fatal error while aggregating data")
