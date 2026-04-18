@@ -2,6 +2,9 @@ import polars as pl
 from pathlib import Path
 import math
 import duckdb
+from datetime import datetime
+
+ADD_COORDS_DATA = False
 
 data_dir = Path("data")
 
@@ -58,148 +61,102 @@ def get_manhattan_dist_and_dir_exprs(lon1, lat1, lon2, lat2):
 
 def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
     """Añade variables base sin hacer cruces históricos."""
-    lf = lf.join(
-        df_coords_pu.lazy(), left_on="PULocationID", right_on="locationid", how="inner"
-    ).join(
-        df_coords_do.lazy(), left_on="DOLocationID", right_on="locationid", how="inner"
-    )
+    if ADD_COORDS_DATA:
+        lf = lf.join(
+            df_coords_pu.lazy(), left_on="PULocationID", right_on="locationid", how="inner"
+        ).join(
+            df_coords_do.lazy(), left_on="DOLocationID", right_on="locationid", how="inner"
+        )
 
-    trip_dist_expr, trip_dir_expr = get_manhattan_dist_and_dir_exprs(
-        "pickup_longitude", "pickup_latitude", "dropoff_longitude", "dropoff_latitude"
-    )
+        trip_dist_expr, trip_dir_expr = get_manhattan_dist_and_dir_exprs(
+            "pickup_longitude", "pickup_latitude", "dropoff_longitude", "dropoff_latitude"
+        )
 
-    landmark_exprs = []
-    for name, (lon, lat) in landmarks.items():
-        dist_pu, _ = get_manhattan_dist_and_dir_exprs(
-            "pickup_longitude", "pickup_latitude", lon, lat
+        landmark_exprs = []
+        for name, (lon, lat) in landmarks.items():
+            dist_pu, _ = get_manhattan_dist_and_dir_exprs(
+                "pickup_longitude", "pickup_latitude", lon, lat
+            )
+            dist_do, _ = get_manhattan_dist_and_dir_exprs(
+                "dropoff_longitude", "dropoff_latitude", lon, lat
+            )
+            landmark_exprs.extend(
+                [
+                    dist_pu.alias(f"pickup_dist_{name}"),
+                    dist_do.alias(f"dropoff_dist_{name}"),
+                ]
+            )
+
+        lf = lf.with_columns(
+            distance=trip_dist_expr, direction=trip_dir_expr, *landmark_exprs
         )
-        dist_do, _ = get_manhattan_dist_and_dir_exprs(
-            "dropoff_longitude", "dropoff_latitude", lon, lat
-        )
-        landmark_exprs.extend(
-            [
-                dist_pu.alias(f"pickup_dist_{name}"),
-                dist_do.alias(f"dropoff_dist_{name}"),
-            ]
-        )
+
+    
 
     return lf.with_columns(
-        distance=trip_dist_expr, direction=trip_dir_expr, *landmark_exprs
-    ).with_columns(
-        direction_bucket=((pl.col("direction") + 180) / (360.0 / 37)).cast(pl.Int32),
         month=pl.col("pickup_datetime").dt.month(),
         dayofyear=pl.col("pickup_datetime").dt.ordinal_day(),
         weekday=pl.col("pickup_datetime").dt.weekday(),
         hour=(
             pl.col("pickup_datetime").dt.hour()
             + (pl.col("pickup_datetime").dt.minute() / 60.0)
-        ),
-        trip_duration_min=(
-            pl.col("dropoff_datetime") - pl.col("pickup_datetime")
-        ).dt.total_minutes(),
+        )
     )
 
 
 # --- CARGA DE DATOS ---
-split_val = "2025-11-01"  # noviembre
-split_test = "2025-12-01"  # diciembre y parte de enero
-df_train = (
+print("Muestreando y cargando datos unificados...")
+df_all = (
     con.execute(f"""
-    SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
-    payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
-    WHERE YEAR(pickup_datetime) >= 2023 AND pickup_datetime < '{split_val}'
-    USING SAMPLE 2% (System, 42)
-""")
+    WITH sample_data AS (
+        SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
+               payment_type, VendorID
+        FROM '{data_dir / "21-25_clipped.parquet"}'
+        WHERE YEAR(pickup_datetime) >= 2023
+        USING SAMPLE 2% (System, 42)
+    ),
+    guaranteed_locations AS (
+        -- Garantizamos 1 fila para cada PULocationID del 1 al 263
+        SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
+               payment_type, VendorID
+        FROM '{data_dir / "21-25_clipped.parquet"}'
+        WHERE YEAR(pickup_datetime) >= 2023 
+          AND PULocationID BETWEEN 1 AND 263
+        -- QUALIFY actúa como un filtro sobre funciones de ventana
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY pickup_datetime) = 1
+    )
+    
+    SELECT * FROM sample_data
+    UNION 
+    SELECT * FROM guaranteed_locations
+    """)
     .pl()
     .lazy()
 )
 
-df_val = (
-    con.execute(f"""
-    SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
-    payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
-    WHERE pickup_datetime >= '{split_val}' AND pickup_datetime < '{split_test}'
-    USING SAMPLE 2% (System, 42)
-""")
-    .pl()
-    .lazy()
-)
-
-df_test = (
-    con.execute(f"""
-    SELECT pickup_datetime, dropoff_datetime, PULocationID, DOLocationID, tip_amount,
-    payment_type, VendorID FROM '{data_dir / "21-25_clipped.parquet"}'
-    WHERE pickup_datetime >= '{split_test}'
-    USING SAMPLE 2% (System, 42)
-""")
-    .pl()
-    .lazy()
-)
-
-# --- PREPARAR VARIABLES BASE ---
-print("Extrayendo variables base...")
-df_train_base = add_base_features(df_train)
-df_val_base = add_base_features(df_val)
-df_test_base = add_base_features(df_test)
-
-# --- CREAR DICCIONARIOS SOLO CON TRAIN Y MATERIALIZARLOS (.collect()) ---
-print("Creando diccionarios de Train (Target Encoding y ETAs)...")
-
-# Diccionario de Direcciones
-diccionario_direcciones = (
-    df_train_base.filter(pl.col("distance") > 5)
-    .with_columns(tip_per_km=(pl.col("tip_amount") * 1000) / (pl.col("distance") + 5))
-    .group_by("direction_bucket")
-    .agg(pl.col("tip_per_km").mean().alias("mean_tip_per_bucket_TRAIN"))
-).collect()
-
-max_tip_mean = diccionario_direcciones["mean_tip_per_bucket_TRAIN"].max()
-
-# Diccionario de ETAs (Tiempos esperados)
-tiempos_esperados = (
-    df_train_base.group_by(["PULocationID", "DOLocationID", "weekday", "hour"]).agg(
-        pl.col("trip_duration_min").median().alias("expected_trip_duration")
-    )
-).collect()
+print("Aplicando ingeniería de características...")
+df_all_base = add_base_features(df_all)
 
 
-def apply_historical_knowledge(lf: pl.LazyFrame) -> pl.LazyFrame:
-    lf = lf.join(diccionario_direcciones.lazy(), on="direction_bucket", how="left")
-    lf = (
-        lf.with_columns(pl.col("mean_tip_per_bucket_TRAIN").fill_null(0))
-        .with_columns(
-            adj_dist=(pl.col("mean_tip_per_bucket_TRAIN") * pl.col("distance"))
-            / max_tip_mean
-        )
-        .drop(["direction_bucket", "mean_tip_per_bucket_TRAIN"])
-    )
+print("Dividiendo los datos por fechas...")
+val_date = datetime(2025, 11, 1)
+test_date = datetime(2025, 12, 1)
+cols_to_drop = []
 
-    lf = lf.join(
-        tiempos_esperados.lazy(),
-        on=["PULocationID", "DOLocationID", "weekday", "hour"],
-        how="left",
-    )
+# Filtramos usando Polars y encadenamos el drop de las fechas que ya no necesitamos
+df_train = df_all_base.filter(pl.col("pickup_datetime") < val_date).drop(cols_to_drop)
 
-    lf = lf.with_columns(
-        pl.col("expected_trip_duration").fill_null(pl.col("trip_duration_min"))
-    )
+df_val = df_all_base.filter(
+    (pl.col("pickup_datetime") >= val_date) & (pl.col("pickup_datetime") < test_date)
+).drop(cols_to_drop)
 
-    return lf.with_columns(
-        diff_eta=pl.col("trip_duration_min") - pl.col("expected_trip_duration"),
-        delay_ratio=pl.col("trip_duration_min")
-        / (pl.col("expected_trip_duration") + 0.01),
-    ).drop(["expected_trip_duration", "pickup_datetime", "dropoff_datetime"])
+df_test = df_all_base.filter(pl.col("pickup_datetime") >= test_date).drop(cols_to_drop)
 
 
-# --- APLICAR A TRAIN Y TEST Y GUARDAR ---
-print("Aplicando histórico y guardando Parquets...")
-df_train_final = apply_historical_knowledge(df_train_base)
-df_train_final.sink_parquet(data_dir / "train_tip.parquet")
+# --- GUARDAR LOS PARQUETS ---
+print("Guardando Parquets...")
+df_train.sink_parquet(data_dir / "train_tip_new_4.parquet")
+df_val.sink_parquet(data_dir / "val_tip_new_4.parquet")
+df_test.sink_parquet(data_dir / "test_tip_new_4.parquet")
 
-df_val_final = apply_historical_knowledge(df_val_base)
-df_val_final.sink_parquet(data_dir / "val_tip.parquet")
-
-df_test_final = apply_historical_knowledge(df_test_base)
-df_test_final.sink_parquet(data_dir / "test_tip.parquet")
-
-print("¡Procesamiento finalizado y datos guardados de forma segura!")
+print("¡Procesamiento finalizado y datos guardados!")
