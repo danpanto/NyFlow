@@ -13,8 +13,9 @@ predictor = TaxiPredictor(base_path="final_models")
 
 print("\n📖 Leyendo datos históricos...")
 # Asumiendo que tu carpeta data está en la raíz del proyecto
-ruta_datos = script_dir.parent.parent / "data" / "final_data.parquet"
-
+#ruta_datos = script_dir.parent.parent / "data" / "final_data.parquet" 
+#Si se quiere probar solo con las datos de prediccion usa el siguiente
+ruta_datos = script_dir / "data" / "recent_data.parquet"
 try:
     df_completo = pd.read_parquet(ruta_datos)
 except Exception as e:
