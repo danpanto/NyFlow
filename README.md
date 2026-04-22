@@ -64,6 +64,8 @@ If you don't want to use enviroment variables some scripts will ask you to creat
 
 Make sure to replace `'your_access_key'`,`'your_endpoint'`  and `'your_secret_key'` with your actual MinIO credentials.
 
+### Models training
+In `models/predictor` directory you have 3 notebooks to train the demand, amount and distance models. Moreover there is a python script which has a class to predict the next 24 hours.
 
 ## Scripts information
 

@@ -53,7 +53,7 @@ uv run -m  pipeline.run
 ```
 Mostrará una interfaz interactiva que te ayudará a descargarte todos los datos que quieras.
 
-### MinIO Credentials
+### Credenciales de MinIO 
 Para ejecutar todo asegurate de tener las credenciales de MinIO:
 ```bash
 export MINIO_ACCESS_KEY='your_access_key'
@@ -64,6 +64,8 @@ Si no quieres usar variables de entorno algunos scripts funcionarán con un fich
 
 Sustituye `'your_access_key'`,`'your_endpoint'`  y `'your_secret_key'` con las credenciales de MinIO.
 
+### Entrenamiento de modelos
+Dentro del directorio `demand/predictor` hay 3 notebooks para entrenar los tres modelos que usamos principalmente. Además hay un codigo de python con una clase que sirve para hacer predicciones globales.
 
 ## Información de los códigos y notebooks
 
