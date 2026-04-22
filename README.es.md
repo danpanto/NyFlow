@@ -3,7 +3,7 @@
 
 [English](README.md) | [Español](README.es.md)
 
-### Developers:
+### Desarrolladores:
 - Daniel Pantoja Joaristi
 - Jorge Hernández Palop
 - Marco Casteleiro Trigueros
@@ -21,7 +21,7 @@ NyFlow es un sistema de optimización del flujo de tráfico diseñado para minim
 - Optimización del rendimiento de la red
 - Ajuste dinámico de rutas
 
-## Installation
+## Instalación
 ```bash
 git clone <repository-url>
 cd C-ity-enjoyers
@@ -35,14 +35,14 @@ Este proyecto usa uv. Una vez instalado escribe en tu terminal el siguiente coma
 uv sync
 ```
 
-### Visualization Tool
+### Herramienta de visualización
 Para usar la herramienta de visualización localizada en la carpeta `visualitation`, ejecuta la siguiente línea:
 ```bash
 uv run -m visualization.app.main
 ```
 Una vez ejecutada se te proporcionará una url local donde se mostrará la interfaz gráfica.
 
-#### Note
+#### Nota
 
 Algunas capas permiten hacer selección múltiple si pulsas CTRL mientras seleccionas la zona.
 
@@ -83,7 +83,7 @@ En este proyecto principalmente usamos las siguientes tecnologías:
 
 Para un listado completo de todas las librearías se puede consultar el documento toml junto al resto de archivos de uv.
 
-## License
+## Licencias
 
 Todos los modelos provienen de `'darts'` principalmente.
 Todos los datos han sido extraidos principalmente de `https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page`
