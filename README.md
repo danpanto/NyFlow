@@ -86,7 +86,7 @@ For a complete list of libraries and dependencies, please refer to the correspon
 
 ## License
 
-All the models used comes from `'pytorch_forecasting'`.
+All the models used comes from `'darts'`.
 All the data extracted come from `https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page`
 
 Some notebooks have its own webgraphy. We recommend to read those articles which are helpful to understand the whole project.

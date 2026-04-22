@@ -85,7 +85,7 @@ Para un listado completo de todas las librearías se puede consultar el document
 
 ## License
 
-Todos los modelos provienen de `'pytorch_forecasting'`.
+Todos los modelos provienen de `'darts'` principalmente.
 Todos los datos han sido extraidos principalmente de `https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page`
 
 Algunos notebooks vienen con referencias, recomendamos leerlas para entender en profundidad todo el proyecto.
