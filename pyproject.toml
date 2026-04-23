@@ -38,6 +38,7 @@ dependencies = [
     "darts>=0.43.0",
     "pytorch-lightning>=2.6.1",
     "tensorboard>=2.20.0",
+    "optuna-integration>=4.8.0",
 ]
 
 [build-backend]

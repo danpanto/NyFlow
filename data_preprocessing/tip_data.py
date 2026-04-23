@@ -4,14 +4,15 @@ import math
 import duckdb
 from datetime import datetime
 
-ADD_COORDS_DATA = False
+ADD_COORDS_DATA = True
+ADD_CLIMATE_DATA = True
 
 data_dir = Path("data")
 
 con = duckdb.connect("trips.duckdb")
 con.execute("SET memory_limit = '10GB'")
 
-# 1. Cargamos el df con los centroides (Hacemos collect porque es diminuto y acelera los joins)
+# Cargamos el df con los centroides
 df_coords = (
     pl.scan_parquet(data_dir / "map_centroids.parquet")
     .with_columns(pl.col("locationid").cast(pl.Int16))
@@ -31,6 +32,9 @@ landmarks = {
     "exp": (-74.0375, 40.736),
 }
 
+# Datos meteorológicos
+df_lluvia = pl.scan_parquet(data_dir / "23-2601_climate_hourly.parquet")
+df_sol = pl.scan_parquet(data_dir / "23-2601_climate_daily.parquet")
 
 def get_manhattan_dist_and_dir_exprs(lon1, lat1, lon2, lat2):
     c_lon1, c_lat1 = pl.col(lon1), pl.col(lat1)
@@ -91,6 +95,23 @@ def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
             distance=trip_dist_expr, direction=trip_dir_expr, *landmark_exprs
         )
 
+    if ADD_CLIMATE_DATA:
+        lf = lf.with_columns(pl.col("pickup_datetime").dt.truncate("1h").alias("hour_key"))
+        lf = lf.join(df_lluvia, on="hour_key", how="left")
+        lf = lf.with_columns(
+            temp_discomfort = (pl.col("temperature_2m") - 20).abs(),
+            is_raining=pl.when(pl.col("precipitation") > 0).then(1).otherwise(0)
+        )
+        
+        lf = lf.with_columns(pl.col("pickup_datetime").cast(pl.Date).alias("date_key"))
+        lf = lf.join(df_sol, on="date_key", how="left")
+        lf = lf.with_columns(
+            is_daylight=pl.when((pl.col("pickup_datetime") >= pl.col("sunrise")) & (pl.col("pickup_datetime") <= pl.col("sunset")))
+                        .then(1).otherwise(0)
+        )
+
+        lf = lf.drop("date_key", "hour_key", "sunrise", "sunset")
+
     
 
     return lf.with_columns(
@@ -101,27 +122,57 @@ def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
             pl.col("pickup_datetime").dt.hour()
             + (pl.col("pickup_datetime").dt.minute() / 60.0)
         )
-    )
+    )#.with_columns(pl.col("payment_type").fill_null(5).alias("payment_type"))
 
 
 # --- CARGA DE DATOS ---
 print("Muestreando y cargando datos unificados...")
-df_all = (
+df_train_val = (
     con.execute(f"""
     WITH sample_data AS (
         SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
-               payment_type, VendorID
+               VendorID, fare_amount
         FROM '{data_dir / "21-25_clipped.parquet"}'
-        WHERE YEAR(pickup_datetime) >= 2023
-        USING SAMPLE 2% (System, 42)
+        WHERE YEAR(pickup_datetime) >= 2023 AND payment_type = 1
+        USING SAMPLE 5% (System, 42)
     ),
     guaranteed_locations AS (
         -- Garantizamos 1 fila para cada PULocationID del 1 al 263
         SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
-               payment_type, VendorID
+               VendorID, fare_amount
         FROM '{data_dir / "21-25_clipped.parquet"}'
         WHERE YEAR(pickup_datetime) >= 2023 
           AND PULocationID BETWEEN 1 AND 263
+          AND payment_type = 1
+        -- QUALIFY actúa como un filtro sobre funciones de ventana
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY pickup_datetime) = 1
+    )
+    
+    SELECT * FROM sample_data
+    UNION 
+    SELECT * FROM guaranteed_locations
+    """)
+    .pl()
+    .lazy()
+)
+
+df_test = (
+    con.execute(f"""
+    WITH sample_data AS (
+        SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
+               VendorID, fare_amount
+        FROM '{data_dir / "20260423_090829_merged.parquet"}'
+        WHERE YEAR(pickup_datetime) >= 2023 AND payment_type = 1
+        USING SAMPLE 5% (System, 42)
+    ),
+    guaranteed_locations AS (
+        -- Garantizamos 1 fila para cada PULocationID del 1 al 263
+        SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
+               VendorID, fare_amount
+        FROM '{data_dir / "20260423_090829_merged.parquet"}'
+        WHERE YEAR(pickup_datetime) >= 2023 
+          AND PULocationID BETWEEN 1 AND 263
+          AND payment_type = 1
         -- QUALIFY actúa como un filtro sobre funciones de ventana
         QUALIFY ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY pickup_datetime) = 1
     )
@@ -135,7 +186,8 @@ df_all = (
 )
 
 print("Aplicando ingeniería de características...")
-df_all_base = add_base_features(df_all)
+df_all_base = add_base_features(df_train_val)
+df_test = add_base_features(df_test)
 
 
 print("Dividiendo los datos por fechas...")
@@ -150,13 +202,11 @@ df_val = df_all_base.filter(
     (pl.col("pickup_datetime") >= val_date) & (pl.col("pickup_datetime") < test_date)
 ).drop(cols_to_drop)
 
-df_test = df_all_base.filter(pl.col("pickup_datetime") >= test_date).drop(cols_to_drop)
-
 
 # --- GUARDAR LOS PARQUETS ---
 print("Guardando Parquets...")
-df_train.sink_parquet(data_dir / "train_tip_new_4.parquet")
-df_val.sink_parquet(data_dir / "val_tip_new_4.parquet")
-df_test.sink_parquet(data_dir / "test_tip_new_4.parquet")
+df_train.sink_parquet(data_dir / "train_tip_clean.parquet")
+df_val.sink_parquet(data_dir / "val_tip_clean.parquet")
+df_test.sink_parquet(data_dir / "test_tip_clean.parquet")
 
 print("¡Procesamiento finalizado y datos guardados!")
