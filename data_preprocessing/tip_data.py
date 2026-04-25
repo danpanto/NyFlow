@@ -4,14 +4,15 @@ import math
 import duckdb
 from datetime import datetime
 
-ADD_COORDS_DATA = False
+ADD_COORDS_DATA = True
+ADD_CLIMATE_DATA = True
 
 data_dir = Path("data")
 
 con = duckdb.connect("trips.duckdb")
 con.execute("SET memory_limit = '10GB'")
 
-# 1. Cargamos el df con los centroides (Hacemos collect porque es diminuto y acelera los joins)
+# Cargamos el df con los centroides
 df_coords = (
     pl.scan_parquet(data_dir / "map_centroids.parquet")
     .with_columns(pl.col("locationid").cast(pl.Int16))
@@ -30,6 +31,10 @@ landmarks = {
     "chp": (-73.137393, 41.366138),
     "exp": (-74.0375, 40.736),
 }
+
+# Datos meteorológicos
+df_lluvia = pl.scan_parquet(data_dir / "23-2601_climate_hourly.parquet")
+df_sol = pl.scan_parquet(data_dir / "23-2601_climate_daily.parquet")
 
 
 def get_manhattan_dist_and_dir_exprs(lon1, lat1, lon2, lat2):
@@ -61,17 +66,18 @@ def get_manhattan_dist_and_dir_exprs(lon1, lat1, lon2, lat2):
 
 def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
     """Añade variables base sin hacer cruces históricos."""
+    lf = lf.join(
+        df_coords_pu.lazy(), left_on="PULocationID", right_on="locationid", how="inner"
+    ).join(
+        df_coords_do.lazy(), left_on="DOLocationID", right_on="locationid", how="inner"
+    )
+
+    trip_dist_expr, trip_dir_expr = get_manhattan_dist_and_dir_exprs(
+        "pickup_longitude", "pickup_latitude", "dropoff_longitude", "dropoff_latitude"
+    )
+    lf = lf.with_columns(distance=trip_dist_expr, direction=trip_dir_expr)
+
     if ADD_COORDS_DATA:
-        lf = lf.join(
-            df_coords_pu.lazy(), left_on="PULocationID", right_on="locationid", how="inner"
-        ).join(
-            df_coords_do.lazy(), left_on="DOLocationID", right_on="locationid", how="inner"
-        )
-
-        trip_dist_expr, trip_dir_expr = get_manhattan_dist_and_dir_exprs(
-            "pickup_longitude", "pickup_latitude", "dropoff_longitude", "dropoff_latitude"
-        )
-
         landmark_exprs = []
         for name, (lon, lat) in landmarks.items():
             dist_pu, _ = get_manhattan_dist_and_dir_exprs(
@@ -87,11 +93,29 @@ def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
                 ]
             )
 
+        lf = lf.with_columns(*landmark_exprs)
+
+    if ADD_CLIMATE_DATA:
         lf = lf.with_columns(
-            distance=trip_dist_expr, direction=trip_dir_expr, *landmark_exprs
+            pl.col("pickup_datetime").dt.truncate("1h").alias("hour_key")
+        )
+        lf = lf.join(df_lluvia, on="hour_key", how="inner")
+        lf = lf.with_columns(
+            temp_discomfort=(pl.col("temperature_2m") - 20).abs(),
         )
 
-    
+        lf = lf.with_columns(pl.col("pickup_datetime").cast(pl.Date).alias("date_key"))
+        lf = lf.join(df_sol, on="date_key", how="inner")
+        lf = lf.with_columns(
+            is_daylight=pl.when(
+                (pl.col("pickup_datetime") >= pl.col("sunrise"))
+                & (pl.col("pickup_datetime") <= pl.col("sunset"))
+            )
+            .then(1)
+            .otherwise(0)
+        )
+
+        lf = lf.drop("date_key", "hour_key", "sunrise", "sunset")
 
     return lf.with_columns(
         month=pl.col("pickup_datetime").dt.month(),
@@ -100,63 +124,85 @@ def add_base_features(lf: pl.LazyFrame) -> pl.LazyFrame:
         hour=(
             pl.col("pickup_datetime").dt.hour()
             + (pl.col("pickup_datetime").dt.minute() / 60.0)
-        )
-    )
+        ),
+    )  # .with_columns(pl.col("payment_type").fill_null(5).alias("payment_type"))
 
 
-# --- CARGA DE DATOS ---
-print("Muestreando y cargando datos unificados...")
-df_all = (
-    con.execute(f"""
-    WITH sample_data AS (
+print("Iniciando carga unificada y recuperación de test faltante...")
+
+# Configuración de Filtros: más o menos que las clases estén balanceadas
+config = {
+    "yellow": {"vendor": 0, "payment_type": 1, "sample": "5%"},  # 4.116.969
+    "green": {"vendor": 1, "payment_type": 1, "sample": "100%"},  # 660.204
+    "uber": {"vendor": 2, "payment_type": 7, "sample": "1%"},  # 3.582.515
+    "lyft": {"vendor": 3, "payment_type": 7, "sample": "3%"},  # 3.620.679
+}
+
+
+def consulta_base(ruta, vendor_id, payment, sample_pct):
+    return f"""
+    WITH base AS (
         SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
-               payment_type, VendorID
-        FROM '{data_dir / "21-25_clipped.parquet"}'
-        WHERE YEAR(pickup_datetime) >= 2023
-        USING SAMPLE 2% (System, 42)
+               VendorID, fare_amount
+        FROM '{ruta}'
+        WHERE (PULocationID BETWEEN 1 AND 263) AND (DOLocationID BETWEEN 1 AND 263)
+        AND YEAR(pickup_datetime) >= 2023 
+        AND VendorID = {vendor_id}
+        AND payment_type = {payment}
     ),
-    guaranteed_locations AS (
-        -- Garantizamos 1 fila para cada PULocationID del 1 al 263
-        SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount,
-               payment_type, VendorID
-        FROM '{data_dir / "21-25_clipped.parquet"}'
-        WHERE YEAR(pickup_datetime) >= 2023 
-          AND PULocationID BETWEEN 1 AND 263
-        -- QUALIFY actúa como un filtro sobre funciones de ventana
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY pickup_datetime) = 1
-    )
-    
-    SELECT * FROM sample_data
-    UNION 
-    SELECT * FROM guaranteed_locations
-    """)
-    .pl()
-    .lazy()
-)
-
-print("Aplicando ingeniería de características...")
-df_all_base = add_base_features(df_all)
+    sampled AS (SELECT * FROM base USING SAMPLE {sample_pct} (System, 42)),
+    guaranteed AS (SELECT * FROM base QUALIFY ROW_NUMBER() OVER (PARTITION BY PULocationID ORDER BY pickup_datetime) = 1)
+    SELECT * FROM sampled UNION SELECT * FROM guaranteed
+    """
 
 
-print("Dividiendo los datos por fechas...")
+# --- 1. CARGA DEL ARCHIVO PRINCIPAL (21-25) ---
+list_dfs = []
+for name, c in config.items():
+    print(f"Cargando {name} desde clipped...")
+    df_temp = con.execute(
+        consulta_base(
+            data_dir / "21-25_clipped.parquet",
+            c["vendor"],
+            c["payment_type"],
+            c["sample"],
+        )
+    ).pl()
+    list_dfs.append(df_temp)
+
+# --- 2. CARGA DEL ARCHIVO DE TEST (Merged) ---
+# Aquí solo buscamos lo que falta (Yellow y Green para las fechas de test)
+print("Recuperando test de Yellow/Green desde el archivo merged...")
+df_test_extra = con.execute(f"""
+    SELECT pickup_datetime, PULocationID, DOLocationID, tip_amount, VendorID, fare_amount
+    FROM '{data_dir / "20260423_090829_merged.parquet"}'
+    WHERE (PULocationID BETWEEN 1 AND 263) AND (DOLocationID BETWEEN 1 AND 263)
+        AND payment_type = 1
+""").pl()
+
+# --- 3. UNIFICACIÓN TOTAL ---
+df_final_lazy = pl.concat([df.lazy() for df in list_dfs] + [df_test_extra.lazy()])
+
+# --- 4. INGENIERÍA DE CARACTERÍSTICAS ---
+print("Aplicando ingeniería de características a todo el bloque...")
+df_all_base = add_base_features(df_final_lazy)
+
+# --- 5. DIVISIÓN TEMPORAL ---
 val_date = datetime(2025, 11, 1)
 test_date = datetime(2025, 12, 1)
-cols_to_drop = []
+cols_to_drop = ["pickup_datetime"]
 
-# Filtramos usando Polars y encadenamos el drop de las fechas que ya no necesitamos
+print("Separando sets finales...")
 df_train = df_all_base.filter(pl.col("pickup_datetime") < val_date).drop(cols_to_drop)
-
 df_val = df_all_base.filter(
     (pl.col("pickup_datetime") >= val_date) & (pl.col("pickup_datetime") < test_date)
 ).drop(cols_to_drop)
-
 df_test = df_all_base.filter(pl.col("pickup_datetime") >= test_date).drop(cols_to_drop)
 
+# --- 6. GUARDADO ---
+print("Guardando Parquets unificados...")
+df_train.sink_parquet(data_dir / "train_tip_final_unificado_ligero.parquet")
+df_val.sink_parquet(data_dir / "val_tip_final_unificado_ligero.parquet")
+df_test.sink_parquet(data_dir / "test_tip_final_unificado_ligero.parquet")
 
-# --- GUARDAR LOS PARQUETS ---
-print("Guardando Parquets...")
-df_train.sink_parquet(data_dir / "train_tip_new_4.parquet")
-df_val.sink_parquet(data_dir / "val_tip_new_4.parquet")
-df_test.sink_parquet(data_dir / "test_tip_new_4.parquet")
-
-print("¡Procesamiento finalizado y datos guardados!")
+print("¡Procesamiento terminado! Tienes todo junto, sin huecos en el test.")

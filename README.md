@@ -12,25 +12,33 @@
 
 
 ## Overview
-NyFlow is a traffic flow optimization system designed to minimize deadheading (empty vehicle miles) while maximizing overall network throughput. The project includes Deep Learning models to predict the vehicles demand and prce in a nearby future.
+NyFlow is a traffic flow optimization system designed to minimize deadheading (distance travelled by empty vehicles) while maximizing overall network throughput. The project includes Deep Learning models to predict vehicle demand and price in a nearby future.
 
 ## Features
 - Real-time traffic flow analysis
-- Intelligent vehicle routing algorithms
+- Smart vehicle routing algorithms
 - Deadheading minimization strategies
 - Network throughput optimization
 - Dynamic route adjustment
 
 ## Installation
 ```bash
-git clone <repository-url>
+# Via HTTPS
+git clone https://github.com/danpanto/NyFlow.git
+
+# Via SSH
+git clone git@github.com:danpanto/NyFlow.git
+
+# Via GitHub's CLI
+gh repo clone danpanto/NyFlow
+
 cd C-ity-enjoyers
 ```
 
 ## Usage
 
 ### Using UV
-This project uses uv to create a virtual enviroment. To use it use install uv and write
+This project uses uv for library management. Once installed, run the following command to sync everything:
 ```bash
 uv sync
 ```
@@ -40,53 +48,51 @@ To use the visualization tool located in the `visualitation` folder, run the fol
 ```bash
 uv run -m visualization.app.main
 ```
-After running the command it will give you a local url which you can use to use the graphic interface.
+After running the command, you'll be given a local URL where the graphic interface will be displayed.
 
 #### Note
 
-Some layers allow to do multiple selections if you press CTRL while selecting the zone.
+Some layers allow multiple selections when holding down CTRL while selecting the zone.
 
 ### Pipeline Tool
-To execute the pipeline in the `pipeline` folder, run:
+To run the download pipeline (`pipeline` module), run the following command:
 ```bash
-uv run -m  pipeline.run
+uv run -m pipeline.run
 ```
-It will display an interactive app, follow all the steps to download all the files.
+This will display an interactive interface, where you'll be able to download all the files you need, as well as preprocessing them.
 
 ### MinIO Credentials
-Ensure you have your MinIO credentials set in your environment variables:
+Make sure to have your MinIO credentials available so as to run everything. We recommend having them as environment variables:
 ```bash
 export MINIO_ACCESS_KEY='your_access_key'
 export MINIO_SECRET_KEY='your_secret_key'
 export MINIO_ENDPOINT='your_endpoint'
 ```
-If you don't want to use enviroment variables some scripts will ask you to create a document with does credentials.
-
-Make sure to replace `'your_access_key'`,`'your_endpoint'`  and `'your_secret_key'` with your actual MinIO credentials.
+Replace `'your_access_key'`,`'your_endpoint'`  and `'your_secret_key'` with your actual MinIO credentials.
 
 ### Models training
-In `models/predictor` directory you have 3 notebooks to train the demand, amount and distance models. Moreover there is a python script which has a class to predict the next 24 hours.
+Inside `models/predictor` directory you have 3 Jupyter notebooks to train the three models we mainly use: demand, amount and distance. Moreover, there is a python script with has a class to make global predictions (all variables) of the next 24 hours.
 
 ## Scripts information
 
-The repository contains several Jupyter notebooks that provide detailed explanations of the project's components. Notably, the notebooks located in the `models` directory are thoroughly documented, including explanations of the algorithms used and the methodologies applied. Each notebook begins with a list of dependencies required to run the code, ensuring that users can easily set up their environment.
+The repository contains several Jupyter notebooks which provide detailed explanations of the project's components. Notably, the notebooks located in the `models` directory are thoroughly documented, including explanations of the algorithms used and the methodologies applied. Each notebook begins with a list of dependencies required to run the code, ensuring that users can easily set up their environment.
 
 Additionally, the notebooks serve as a guide for understanding the data processing, model training, and evaluation processes, making it easier for developers to contribute to the project or adapt the models for their own use cases.
 
 ## Technologies
 
-This project utilizes several key technologies to enhance its functionality:
+This project employs several key technologies to enhance its functionality:
 
-- **PyTorch**: Used for training deep learning models.
-- **Polars**: Employed for efficient data manipulation and analysis.
-- **Apache Spark**: Utilized for large-scale data processing.
+- **PyTorch**: Used for training Deep Learning models.
+- **Polars**: Efficient data manipulation and analysis.
+- **Apache Spark**: Large-scale data processing.
 - **MinIO**: A high-performance object storage solution for managing data.
 
-For a complete list of libraries and dependencies, please refer to the corresponding toml documet
+For a complete list of libraries and dependencies, please refer to the corresponding TOML document and the rest of uv's files.
 
 ## License
 
-All the models used comes from `'darts'`.
-All the data extracted come from `https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page`
+All the models used come mainly from `'darts'`.
+All the data extracted comes mainly from [TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
 
-Some notebooks have its own webgraphy. We recommend to read those articles which are helpful to understand the whole project.
+Some notebooks have its own webgraphy, which we recommend reading for a deeper understanding of the whole project.
