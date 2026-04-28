@@ -48,7 +48,8 @@ theme-btn {
 
 control-panel,
 asking-rent-control-panel,
-demand-hourly-control-panel {
+demand-hourly-control-panel,
+house-income-control-panel {
     position: absolute;
     bottom: 20px;
     left: 20px;

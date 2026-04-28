@@ -22,6 +22,7 @@ REQUIRED_FILES = {
     "restaurant_info.geojson": "cityenjoyer/restaurant_info.geojson",
     "asking_rent_data.parquet": "cityenjoyer/asking_rent_data.parquet",
     "landmarks.parquet": "cityenjoyer/landmarks.parquet",
+    "house_income.parquet": "cityenjoyer/house_income.parquet"
 }
 
 
@@ -103,6 +104,7 @@ async def lifespan(app: FastAPI):
     app.state.lf = app.state.files["aggregation.parquet"]
     app.state.taxi_zones = app.state.files["taxi_zones.geojson"]
     app.state.rent = app.state.files["asking_rent_data.parquet"]
+    app.state.income = app.state.files["house_income.parquet"]
     app.state.landmarks = app.state.files["landmarks.parquet"]
     app.state.gdf_zones = gpd.GeoDataFrame.from_features(
         app.state.files["taxi_zones.geojson"]["features"]

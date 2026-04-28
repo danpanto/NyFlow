@@ -8,19 +8,19 @@ import "./components/DemandHourlyControlPanel.js";
 // ─── Categorical color palette ─────────────────────────────────────────────────
 // Inspired by the warm-to-hot palette used by the AGG DATA FROM TLC layers
 const DEMAND_COLORS = {
-    null:   { fill: '#111111', border: 'transparent', opacity: 0.50 }, // no data
-    low:    { fill: '#7c3aed', border: 'white',       opacity: 0.65 }, // purple
-    medium: { fill: '#f97316', border: 'white',       opacity: 0.70 }, // orange
-    high:   { fill: '#eab308', border: 'white',       opacity: 0.80 }, // yellow
+    null: { fill: '#111111', border: 'transparent', opacity: 0.50 }, // no data
+    low: { fill: '#7c3aed', border: 'white', opacity: 0.65 }, // purple
+    medium: { fill: '#f97316', border: 'white', opacity: 0.70 }, // orange
+    high: { fill: '#eab308', border: 'white', opacity: 0.80 }, // yellow
 };
 
 // ─── Controller ────────────────────────────────────────────────────────────────
 class DemandHourlyController extends ZoneController {
     constructor(backend) {
         super(backend);
-        this.currentData   = null;
+        this.currentData = null;
         this.normalOpacity = 0.65;
-        this.hoverOpacity  = 0.90;
+        this.hoverOpacity = 0.90;
         this.selectOpacity = 1.00;
         this._init();
     }
@@ -47,10 +47,10 @@ class DemandHourlyController extends ZoneController {
         const c = this._colorFor(id);
         const isSelected = filterService.isSelectedZone(id);
         return {
-            color:       c.border,
-            fillColor:   c.fill,
+            color: c.border,
+            fillColor: c.fill,
             fillOpacity: isSelected ? this.selectOpacity : c.opacity,
-            weight:      1,
+            weight: 1,
         };
     }
 
@@ -67,7 +67,7 @@ class DemandHourlyController extends ZoneController {
     onClick(e, id) {
         if (filterService.layer === 'routes') return;
         const isMulti = e.originalEvent.ctrlKey || e.originalEvent.metaKey;
-        const isSel   = filterService.isSelectedZone(id);
+        const isSel = filterService.isSelectedZone(id);
         filterService.selectZone(id, isMulti ? !isSel : true, !isMulti);
         this.backend.refresh();
     }
@@ -78,10 +78,10 @@ export class DemandHourlyLayer extends BaseLayer {
     constructor(mapManager, backend) {
         super();
 
-        this.name         = 'demand_hourly';
-        this.mapManager   = mapManager;
-        this.baseAppName  = 'NyFlow';
-        this.data         = null;
+        this.name = 'demand_hourly';
+        this.mapManager = mapManager;
+        this.baseAppName = 'NyFlow';
+        this.data = null;
 
         // LRU cache — key: JSON.stringify(payload), value: response data object
         this.cache = new LRUCache(100);
@@ -99,61 +99,65 @@ export class DemandHourlyLayer extends BaseLayer {
 
         this.uiWrapper = document.createElement('div');
         Object.assign(this.uiWrapper.style, {
-            position:   'absolute',
-            bottom:     '20px',
-            right:      '20px',
-            display:    'flex',
-            gap:        '20px',
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            display: 'flex',
+            gap: '20px',
             alignItems: 'flex-end',
-            zIndex:     '1',
+            zIndex: '1',
         });
         this.uiWrapper.appendChild(this.zoneInfoDiv);
         this.uiWrapper.appendChild(this._buildLegend());
 
         // Subscriptions
-        this._unsubZones  = null;
-        this._unsubDate   = null;
+        this._unsubZones = null;
+        this._unsubDate = null;
         this._unsubVendor = null;
+
+        // Debounce / abort control for _fetchData
+        this._debounceTimer = null;
+        this._abortController = null;
     }
 
     // ── Categorical legend ────────────────────────────────────────────────────
     _buildLegend() {
         const legend = document.createElement('div');
         Object.assign(legend.style, {
-            background:   'var(--app-bg, #fff)',
+            background: 'var(--app-bg, #fff)',
             borderRadius: '12px',
-            boxShadow:    '0 4px 16px rgba(0,0,0,0.15)',
-            padding:      '12px 16px',
-            fontFamily:   'system-ui, sans-serif',
-            fontSize:     '0.8rem',
-            border:       '1px solid var(--map-bg, #e5e7eb)',
-            minWidth:     '130px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            padding: '12px 16px',
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: '0.8rem',
+            border: '1px solid var(--map-bg, #e5e7eb)',
+            minWidth: '130px',
         });
 
         const title = document.createElement('div');
         Object.assign(title.style, {
-            fontWeight:    '700',
-            fontSize:      '0.68rem',
+            fontWeight: '700',
+            fontSize: '0.68rem',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
-            opacity:       '0.55',
-            marginBottom:  '8px',
-            color:         'var(--app-text-title, #111)',
+            opacity: '0.55',
+            marginBottom: '8px',
+            color: 'var(--app-text-title, #111)',
         });
         title.textContent = 'Demand Level';
         legend.appendChild(title);
 
-        [               
-            { label: 'High',    color: DEMAND_COLORS.high.fill   },
-            { label: 'Medium',  color: DEMAND_COLORS.medium.fill },
-            { label: 'Low',     color: DEMAND_COLORS.low.fill    },
-            { label: 'No data', color: DEMAND_COLORS.null.fill   },
+        [
+            { label: 'High', color: DEMAND_COLORS.high.fill },
+            { label: 'Medium', color: DEMAND_COLORS.medium.fill },
+            { label: 'Low', color: DEMAND_COLORS.low.fill },
+            { label: 'No data', color: DEMAND_COLORS.null.fill },
         ].forEach(({ label, color }) => {
-            const row    = document.createElement('div');
+            const row = document.createElement('div');
             const swatch = document.createElement('span');
-            const lbl    = document.createElement('span');
+            const lbl = document.createElement('span');
 
-            Object.assign(row.style,    { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' });
+            Object.assign(row.style, { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' });
             Object.assign(swatch.style, { display: 'inline-block', width: '14px', height: '14px', borderRadius: '3px', background: color, flexShrink: '0' });
             lbl.style.color = 'var(--app-text, #1f2937)';
             lbl.textContent = label;
@@ -180,8 +184,8 @@ export class DemandHourlyLayer extends BaseLayer {
         // Wire up hour dial callback
         this.controlPanel.onHourChange = () => this._fetchData();
 
-        this._unsubZones  = filterService.addListener('zones',   () => this._updateZoneInfo(filterService.lastZone));
-        this._unsubDate   = filterService.addListener('date',    () => this._fetchData());
+        this._unsubZones = filterService.addListener('zones', () => this._updateZoneInfo(filterService.lastZone));
+        this._unsubDate = filterService.addListener('date', () => this._fetchData());
         this._unsubVendor = filterService.addListener('vendors', () => this._fetchData());
 
         // Initial fetch once date range is set (small delay to let controlPanel init run)
@@ -189,6 +193,16 @@ export class DemandHourlyLayer extends BaseLayer {
     }
 
     unbind() {
+        // Cancel any pending debounce / in-flight request
+        if (this._debounceTimer !== null) {
+            clearTimeout(this._debounceTimer);
+            this._debounceTimer = null;
+        }
+        if (this._abortController) {
+            this._abortController.abort();
+            this._abortController = null;
+        }
+
         this.controlPanel.remove();
         this.uiWrapper.remove();
         this.mapManager.toggleLayer(this.name, false);
@@ -197,13 +211,51 @@ export class DemandHourlyLayer extends BaseLayer {
         if (titleEl) titleEl.textContent = '';
         document.title = this.baseAppName;
 
-        if (this._unsubZones)  { this._unsubZones();  this._unsubZones  = null; }
-        if (this._unsubDate)   { this._unsubDate();   this._unsubDate   = null; }
+        if (this._unsubZones) { this._unsubZones(); this._unsubZones = null; }
+        if (this._unsubDate) { this._unsubDate(); this._unsubDate = null; }
         if (this._unsubVendor) { this._unsubVendor(); this._unsubVendor = null; }
     }
 
-    // ── Data fetching (with LRU cache) ────────────────────────────────────────
-    async _fetchData() {
+    // ── Data fetching (debounced + abort-controlled) ──────────────────────────
+    _fetchData() {
+        // Check cache first — if hit, apply instantly (no debounce needed)
+        const cacheKey = this._buildCacheKey();
+        if (cacheKey) {
+            const cached = this.cache.get(cacheKey);
+            if (cached) {
+                // Cancel any pending debounce/in-flight request since we already have the answer
+                if (this._debounceTimer !== null) {
+                    clearTimeout(this._debounceTimer);
+                    this._debounceTimer = null;
+                }
+                if (this._abortController) {
+                    this._abortController.abort();
+                    this._abortController = null;
+                }
+                this._applyData(cached);
+                return;
+            }
+        }
+
+        // No cache hit — debounce the network request
+        if (this._debounceTimer !== null) {
+            clearTimeout(this._debounceTimer);
+        }
+        this._debounceTimer = setTimeout(() => this._doFetch(), 300);
+    }
+
+    _buildCacheKey() {
+        const dateRange = filterService.dateRange;
+        if (!dateRange?.min || !dateRange?.max) return null;
+        const fmt = (d) => (d instanceof Date ? d : new Date(d)).toISOString().split('.')[0];
+        return JSON.stringify({
+            vendors: Array.from(filterService.vendors ?? []),
+            date: { min: fmt(dateRange.min), max: fmt(dateRange.max) },
+            hour: this.controlPanel.hour,
+        });
+    }
+
+    async _doFetch() {
         const dateRange = filterService.dateRange;
         if (!dateRange?.min || !dateRange?.max) return;
 
@@ -211,25 +263,33 @@ export class DemandHourlyLayer extends BaseLayer {
 
         const payload = {
             vendors: Array.from(filterService.vendors ?? []),
-            date:    { min: fmt(dateRange.min), max: fmt(dateRange.max) },
-            hour:    this.controlPanel.hour,
+            date: { min: fmt(dateRange.min), max: fmt(dateRange.max) },
+            hour: this.controlPanel.hour,
         };
 
         const cacheKey = JSON.stringify(payload);
 
-        // 1. Try cache first
+        // Double-check cache (could have been populated by a concurrent call)
         const cached = this.cache.get(cacheKey);
         if (cached) {
             this._applyData(cached);
             return;
         }
 
-        // 2. Fetch from API
+        // Cancel any in-flight request
+        if (this._abortController) {
+            this._abortController.abort();
+        }
+        this._abortController = new AbortController();
+        const signal = this._abortController.signal;
+
+        // Fetch from API
         try {
-            const res  = await fetch('/api/hourly-demand-classification', {
-                method:  'POST',
+            const res = await fetch('/api/hourly-demand-classification', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(payload),
+                body: JSON.stringify(payload),
+                signal,
             });
             const json = await res.json();
 
@@ -240,7 +300,10 @@ export class DemandHourlyLayer extends BaseLayer {
                 console.warn('DemandHourlyLayer: API returned error', json);
             }
         } catch (e) {
+            if (e.name === 'AbortError') return; // Request was superseded — ignore
             console.error('DemandHourlyLayer: fetch failed', e);
+        } finally {
+            this._abortController = null;
         }
     }
 
@@ -254,13 +317,13 @@ export class DemandHourlyLayer extends BaseLayer {
     _updateZoneInfo(zone) {
         if (!zone || !this.data) { this.zoneInfoDiv.visible = false; return; }
         const cls = this.data[zone];
-        if (cls === undefined)   { this.zoneInfoDiv.visible = false; return; }
+        if (cls === undefined) { this.zoneInfoDiv.visible = false; return; }
 
-        this.zoneInfoDiv.visible  = true;
-        this.zoneInfoDiv.heading  = zoneData.getName(zone);
-        this.zoneInfoDiv.data     = {
+        this.zoneInfoDiv.visible = true;
+        this.zoneInfoDiv.heading = zoneData.getName(zone);
+        this.zoneInfoDiv.data = {
             'Zone ID': zone,
-            'Demand':  cls ? cls.charAt(0).toUpperCase() + cls.slice(1) : '—',
+            'Demand': cls ? cls.charAt(0).toUpperCase() + cls.slice(1) : '—',
         };
     }
 }

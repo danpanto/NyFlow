@@ -1,19 +1,19 @@
 import { DataQueryLayer } from "./DataQueryLayer.js";
 import { filterService } from "./services/FilterService.js";
 import { VARIABLE_CONFIG } from "./queryVariables.js";
-import "./components/AskingRentControlPanel.js";
+import "./components/HouseIncomeControlPanel.js";
 import { LRUCache } from "./LRUCache.js";
 
-export class AskingRentLayer extends DataQueryLayer {
+export class HouseIncomeLayer extends DataQueryLayer {
     constructor(mapManager, backend) {
-        super(mapManager, backend, "asking_rent");
+        super(mapManager, backend, "house_income");
 
-        // Remove old generic control panel overriding it
-        this.controlPanel = document.createElement("asking-rent-control-panel");
-        this.cache = new LRUCache(200);
-        
-        // Custom scale starting from dark purple instead of black
-        this.gradient.currentTheme = ["#3b0f70", "#8c2981", "#de4968", "#fe9f6d", "#fcfdbf"];
+        // Replace the generic control panel
+        this.controlPanel = document.createElement("house-income-control-panel");
+        this.cache = new LRUCache(50); // Only 14 possible years, 50 is more than enough
+
+        // Teal-to-gold gradient to visually distinguish from rent layer
+        this.gradient.currentTheme = ["#0d3b66", "#1a6b9a", "#2ecc71", "#f39c12", "#f1c40f"];
     }
 
     async bind() {
@@ -30,41 +30,29 @@ export class AskingRentLayer extends DataQueryLayer {
 
         this.mapManager.toggleLayer(this.variable, true);
 
-        await this._loadStaticData();
+        await this._loadData();
 
         this.unsubscribeSelectZone = filterService.addListener("zones", () => {
             this.onSelectedZone(filterService.lastZone);
         });
 
         this.unsubscribeDate = filterService.addListener("date", () => {
-            this._loadStaticData();
+            this._loadData();
         });
     }
 
-    async _loadStaticData() {
+    async _loadData() {
         try {
-            const ds = filterService.dateRange || { min: new Date("2010-01-01T00:00:00"), max: new Date("2010-01-31T23:59:59") };
+            const year = this.controlPanel.selectedYear ?? 2024;
+            const cacheKey = `year-${year}`;
 
-            const fmt = (d) => {
-                const dt = d instanceof Date ? d : new Date(d);
-                return dt.toISOString().split('.')[0];
-            };
-
-            const payload = {
-                variables: ["asking_rent"],
-                vendors: filterService.vendors ? Array.from(filterService.vendors) : [],
-                date: { min: fmt(ds.min), max: fmt(ds.max) },
-                zones: filterService.zones ? Array.from(filterService.zones) : []
-            };
-
-            const cacheKey = JSON.stringify(payload);
             let cachedData = this.cache.get(cacheKey);
 
             if (!cachedData) {
-                const response = await fetch('/api/asking-rent', {
+                const response = await fetch('/api/house-income', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ year })
                 });
                 const result = await response.json();
 
@@ -72,18 +60,19 @@ export class AskingRentLayer extends DataQueryLayer {
                     cachedData = result.data;
                     this.cache.set(cacheKey, cachedData);
                 } else {
+                    console.error("House income API error:", result);
                     return;
                 }
             }
-            
-            // Filter out 0 values (no data)
+
+            // Filter out zero / null values (no data)
             const filteredData = {};
             for (const key in cachedData) {
                 if (cachedData[key] > 0) {
                     filteredData[key] = cachedData[key];
                 }
             }
-            
+
             this.data = filteredData;
             this.mapController.update({ query: this.data });
             const { min, max, absoluteMax } = this.mapController.dataBounds;
@@ -91,7 +80,7 @@ export class AskingRentLayer extends DataQueryLayer {
             this.onSelectedZone(filterService.lastZone);
 
         } catch (e) {
-            console.error("Error loading asking rent data", e);
+            console.error("Error loading house income data", e);
         }
     }
 

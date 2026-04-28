@@ -106,6 +106,13 @@ export const VARIABLE_CONFIG = {
         formatter: compactCurrency,
         units: "USD"
     },
+    house_income: {
+        longName: "Median Household Income",
+        shortName: "Median Income",
+        description: "The median household income per district (2011–2024).",
+        formatter: compactCurrency,
+        units: "USD"
+    },
     landmarks: {
         longName: "Touristic Landmarks",
         shortName: "Landmarks",
@@ -126,5 +133,5 @@ export const VARIABLE_CONFIG = {
 };
 
 export const SUPPORTED_VARIABLES = Object.keys(VARIABLE_CONFIG).filter(v =>
-    v !== 'restaurant_ratings' && v !== 'asking_rent' && v !== 'trivia' && v !== 'demand_hourly' && v !== 'landmarks'
+    v !== 'restaurant_ratings' && v !== 'asking_rent' && v !== 'house_income' && v !== 'trivia' && v !== 'demand_hourly' && v !== 'landmarks'
 );

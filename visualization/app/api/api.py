@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+
 from datetime import datetime
 import polars as pl
 from typing import List, Optional, Literal
@@ -74,6 +75,10 @@ class DemandRequest(BaseModel):
     vendors: List[str] = Field(default_factory=lambda: ["0", "1", "2", "3"])
     date: DateRange
     hour: int = 0
+
+
+class HouseIncomeRequest(BaseModel):
+    year: int
 
 
 @router.post("/query")
@@ -463,3 +468,21 @@ async def classify_demand(req: DemandRequest, request: Request):
 
         traceback.print_exc()
         return {"status": "error", "msg": str(e)}
+
+@router.post("/house-income")
+async def get_house_income(req: HouseIncomeRequest, request: Request):
+    try:
+        year = int(req.year)
+    except ValueError:
+        return {"status": "invalid", "msg": "Invalid date format."}
+
+    lf = request.app.state.income
+
+    # Filtrar por fecha
+    lf = lf.filter(pl.col("year") == year).group_by("locationid").agg(pl.median("median_income").alias("median_income")).collect()
+
+    response_data = dict(
+        zip(lf["locationid"].to_list(), lf["median_income"].to_list())
+    )
+
+    return {"status": "ok", "data": response_data}
