@@ -96,7 +96,18 @@ template.innerHTML = `
             color: #fff;
             border-color: var(--app-text-accent, #2563eb);
         }
-        .vbtn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+        .vendor-grid .vbtn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+        /* ── Days grid ───────────────────────────────────────── */
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .days-grid .vbtn {
+            padding: 8px 0;
+            font-size: 0.75rem;
+        }
 
         /* ── Date range ──────────────────────────────────────── */
         .range-btns {
@@ -244,6 +255,25 @@ template.innerHTML = `
 
     <div class="section-divider"></div>
 
+        <!-- ── Day of Week filter ────────────────────────────── -->
+    <div class="section">
+        <div class="header">
+            <h3>Day of week filter</h3>
+            <button id="clear-days-btn" class="clear-btn" title="Clear selection">✕</button>
+        </div>
+        <div class="days-grid" id="days-grid">
+            <button class="vbtn" data-id="1">L</button>
+            <button class="vbtn" data-id="2">M</button>
+            <button class="vbtn" data-id="3">X</button>
+            <button class="vbtn" data-id="4">J</button>
+            <button class="vbtn" data-id="5">V</button>
+            <button class="vbtn" data-id="6">S</button>
+            <button class="vbtn" data-id="7">D</button>
+        </div>
+    </div>
+
+    <div class="section-divider"></div>
+
     <!-- ── Hour dial ──────────────────────────────────────── -->
     <div class="section">
         <h3>Hour of Day</h3>
@@ -274,6 +304,8 @@ export class DemandHourlyControlPanel extends HTMLElement {
         // Element references
         this.vendorGrid   = this.shadowRoot.getElementById('vendor-grid');
         this.clearVendorsBtn = this.shadowRoot.getElementById('clear-vendors-btn');
+        this.daysGrid     = this.shadowRoot.getElementById('days-grid');
+        this.clearDaysBtn = this.shadowRoot.getElementById('clear-days-btn');
         this.startInput   = this.shadowRoot.getElementById('start-date');
         this.endInput     = this.shadowRoot.getElementById('end-date');
         this.rangeBtns    = this.shadowRoot.querySelectorAll('.rbtn');
@@ -287,6 +319,7 @@ export class DemandHourlyControlPanel extends HTMLElement {
 
         this._unsubDate    = null;
         this._unsubVendors = null;
+        this._unsubDays    = null;
     }
 
     // Public API
@@ -296,22 +329,26 @@ export class DemandHourlyControlPanel extends HTMLElement {
     connectedCallback() {
         if (!this._initialized) {
             this._initVendors();
+            this._initDays();
             this._initDates();
             this._initDial();
             this._initialized = true;
         } else {
             this._syncVendors(filterService.vendors);
+            this._syncDays(filterService.daysOfWeek);
             this._onExternalDateChange(filterService.dateRange);
             this._drawDial();
         }
 
         this._unsubDate    = filterService.addListener('date',    (r) => this._onExternalDateChange(r));
         this._unsubVendors = filterService.addListener('vendors', (v) => this._syncVendors(v));
+        this._unsubDays    = filterService.addListener('days',    (d) => this._syncDays(d));
     }
 
     disconnectedCallback() {
         if (this._unsubDate)    { this._unsubDate();    this._unsubDate    = null; }
         if (this._unsubVendors) { this._unsubVendors(); this._unsubVendors = null; }
+        if (this._unsubDays)    { this._unsubDays();    this._unsubDays    = null; }
     }
 
     // ── Vendors ──────────────────────────────────────────────────────────────
@@ -350,6 +387,32 @@ export class DemandHourlyControlPanel extends HTMLElement {
             this.clearVendorsBtn.classList.add('visible');
         } else {
             this.clearVendorsBtn.classList.remove('visible');
+        }
+    }
+
+    // ── Days of Week ─────────────────────────────────────────────────────────
+    _initDays() {
+        this.daysGrid.addEventListener('click', (e) => {
+            const b = e.target.closest('.vbtn');
+            if (b) filterService.selectDayOfWeek(b.dataset.id);
+        });
+
+        this.clearDaysBtn.addEventListener('click', () => {
+            filterService.selectDayOfWeek(null);
+        });
+
+        this._syncDays(filterService.daysOfWeek);
+    }
+
+    _syncDays(days) {
+        this.daysGrid.querySelectorAll('.vbtn').forEach(b => {
+            b.classList.toggle('active', !!(days && days.has(Number(b.dataset.id))));
+        });
+
+        if (days && days.size > 0) {
+            this.clearDaysBtn.classList.add('visible');
+        } else {
+            this.clearDaysBtn.classList.remove('visible');
         }
     }
 

@@ -21,6 +21,7 @@ class FilterService extends EventTarget {
         this._layer = null;
         this._dateRange = null;
         this._vendors = new Set();
+        this._daysOfWeek = new Set();
     }
 
     selectMaxDateRange(date) {
@@ -45,6 +46,7 @@ class FilterService extends EventTarget {
         if (this._layer !== layer) {
             this.selectVendor(null);
             this.selectZone(null);
+            this.selectDayOfWeek(null);
         }
         this._layer = layer;
         this._sendEvent("layer", layer);
@@ -127,6 +129,41 @@ class FilterService extends EventTarget {
         return this._vendors.has(vendorId);
     }
 
+    selectDayOfWeek(day, unique = false) {
+        let changed = false;
+        if (day === undefined) return;
+        if (day !== null) day = Number(day);
+        if (unique) {
+            const isAlreadyOnlySelection = this._daysOfWeek.size === 1 && this._daysOfWeek.has(day);
+
+            if (this._daysOfWeek.size > 0 && !isAlreadyOnlySelection) {
+                this._daysOfWeek.clear();
+                changed = true;
+            }
+        }
+
+        if (day !== null && !this._daysOfWeek.has(day)) {
+            this._daysOfWeek.add(day);
+            changed = true;
+        } else if (this._daysOfWeek.has(day)) {
+            this._daysOfWeek.delete(day);
+            changed = true;
+        }
+
+        if (day === null && this._daysOfWeek.size !== 0) {
+            this._daysOfWeek.clear();
+            changed = true;
+        }
+
+        if (changed) {
+            this._sendEvent("days", this._daysOfWeek);
+        }
+    }
+
+    isSelectedDayOfWeek(day) {
+        return this._daysOfWeek.has(Number(day));
+    }
+
     get lastZone() { return this._lastZone; }
     get zones() { return this._zones; }
     get layer() { return this._layer; }
@@ -134,6 +171,7 @@ class FilterService extends EventTarget {
     get maxDateRange() { return this._dateRange["max"]; }
     get dateRange() { return this._dateRange; }
     get vendors() { return this._vendors; }
+    get daysOfWeek() { return this._daysOfWeek; }
 }
 
 export const filterService = new FilterService();

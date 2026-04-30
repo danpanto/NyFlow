@@ -114,6 +114,7 @@ export class DemandHourlyLayer extends BaseLayer {
         this._unsubZones = null;
         this._unsubDate = null;
         this._unsubVendor = null;
+        this._unsubDays = null;
 
         // Debounce / abort control for _fetchData
         this._debounceTimer = null;
@@ -187,6 +188,7 @@ export class DemandHourlyLayer extends BaseLayer {
         this._unsubZones = filterService.addListener('zones', () => this._updateZoneInfo(filterService.lastZone));
         this._unsubDate = filterService.addListener('date', () => this._fetchData());
         this._unsubVendor = filterService.addListener('vendors', () => this._fetchData());
+        this._unsubDays = filterService.addListener('days', () => this._fetchData());
 
         // Initial fetch once date range is set (small delay to let controlPanel init run)
         setTimeout(() => this._fetchData(), 50);
@@ -214,6 +216,7 @@ export class DemandHourlyLayer extends BaseLayer {
         if (this._unsubZones) { this._unsubZones(); this._unsubZones = null; }
         if (this._unsubDate) { this._unsubDate(); this._unsubDate = null; }
         if (this._unsubVendor) { this._unsubVendor(); this._unsubVendor = null; }
+        if (this._unsubDays) { this._unsubDays(); this._unsubDays = null; }
     }
 
     // ── Data fetching (debounced + abort-controlled) ──────────────────────────
@@ -250,6 +253,7 @@ export class DemandHourlyLayer extends BaseLayer {
         const fmt = (d) => (d instanceof Date ? d : new Date(d)).toISOString().split('.')[0];
         return JSON.stringify({
             vendors: Array.from(filterService.vendors ?? []),
+            days_of_week: Array.from(filterService.daysOfWeek ?? []),
             date: { min: fmt(dateRange.min), max: fmt(dateRange.max) },
             hour: this.controlPanel.hour,
         });
@@ -263,6 +267,7 @@ export class DemandHourlyLayer extends BaseLayer {
 
         const payload = {
             vendors: Array.from(filterService.vendors ?? []),
+            days_of_week: Array.from(filterService.daysOfWeek ?? []),
             date: { min: fmt(dateRange.min), max: fmt(dateRange.max) },
             hour: this.controlPanel.hour,
         };

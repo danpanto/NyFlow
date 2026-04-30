@@ -75,6 +75,7 @@ class DemandRequest(BaseModel):
     vendors: List[str] = Field(default_factory=lambda: ["0", "1", "2", "3"])
     date: DateRange
     hour: int = 0
+    days_of_week: Optional[List[int]] = None
 
 
 class HouseIncomeRequest(BaseModel):
@@ -423,10 +424,8 @@ async def classify_demand(req: DemandRequest, request: Request):
         if req.vendors:
             lf_filtered = lf_filtered.filter(pl.col("VendorID").is_in(req.vendors))
 
-        # if req.hour:
-        #     lf_filtered = lf_filtered.filter(pl.col("pickup_datetime").dt.hour() == req.hour)
-
-        lf_filtered = (
+        # Train on all data (no day-of-week filter) for consistent cluster boundaries
+        lf_train = (
             lf_filtered.group_by(
                 pl.col("PULocationID"),
                 pl.col("pickup_datetime").dt.hour().alias("hour"),
@@ -436,17 +435,39 @@ async def classify_demand(req: DemandRequest, request: Request):
             .collect()
         )
 
-        counts = lf_filtered["count"].to_numpy().reshape(-1, 1)
-        ids = lf_filtered.filter(pl.col("hour") == req.hour)["PULocationID"].to_list()
+        counts = lf_train["count"].to_numpy().reshape(-1, 1)
+
+        # Inference on day-of-week filtered data (or all data if no filter)
+        if req.days_of_week:
+            lf_inference_src = lf_filtered.filter(
+                pl.col("pickup_datetime").dt.weekday().is_in(req.days_of_week)
+            )
+        else:
+            lf_inference_src = lf_filtered
+
+        lf_inference = (
+            lf_inference_src.group_by(
+                pl.col("PULocationID"),
+                pl.col("pickup_datetime").dt.hour().alias("hour"),
+            )
+            .agg(pl.mean("count").alias("count"))
+            .sort(pl.col("PULocationID"))
+            .collect()
+        )
+
+        ids = lf_inference.filter(pl.col("hour") == req.hour)["PULocationID"].to_list()
         hour_data = (
-            lf_filtered.filter(pl.col("hour") == req.hour)["count"]
+            lf_inference.filter(pl.col("hour") == req.hour)["count"]
             .to_numpy()
             .reshape(-1, 1)
         )
 
         kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
         kmeans.fit(counts)
-        preds = kmeans.predict(hour_data)
+        if len(hour_data) > 0:
+            preds = kmeans.predict(hour_data)
+        else:
+            preds = []
 
         centros = kmeans.cluster_centers_.flatten()
 
