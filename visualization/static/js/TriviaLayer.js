@@ -158,9 +158,17 @@ export class TriviaLayer extends BaseLayer {
         const borough = zoneData.getBorough(zone);
 
         this.zoneInfoDiv.heading = name;
-        this.zoneInfoDiv.data = {
-            "Zone ID": zone,
-            "Borough": borough
-        };
+        const data = {};
+
+        const targetId = this.mapController.targetId;
+        if (targetId) {
+            const dist = zoneData.getDistance(zone, targetId);
+            if (dist !== null) {
+                const distKm = (dist / 1000).toFixed(1);
+                data["Distance to target"] = `${distKm} km`;
+            }
+        }
+
+        this.zoneInfoDiv.data = data;
     }
 }

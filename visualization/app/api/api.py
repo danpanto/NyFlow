@@ -297,7 +297,7 @@ async def get_restaurant_ratings(req: QueryRequest, request: Request):
     return {
         "status": "ok",
         "data": request.app.state.gdf_restaurants.groupby("locationid")["SCORE"]
-        .mean()
+        .median()
         .to_dict(),
     }
 
